@@ -3,83 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C2 Analyse Tool</title>
+    <title>C2 Profi-Analyse</title>
     <style>
-        body { font-family: sans-serif; background-color: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
-        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 450px; width: 100%; }
-        h2 { color: #1a73e8; border-bottom: 2px solid #e8f0fe; padding-bottom: 10px; }
-        label { display: block; margin-top: 15px; font-weight: bold; }
-        input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background-color: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 20px; font-weight: bold; }
-        button:hover { background-color: #1557b0; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 600px; width: 100%; }
+        h2 { color: #1a73e8; border-bottom: 2px solid #e8f0fe; padding-bottom: 10px; margin-top: 0; }
+        .info-box { background: #f8f9fa; padding: 12px; border-radius: 8px; font-size: 0.85em; color: #555; margin-bottom: 20px; border-left: 4px solid #1a73e8; }
+        label { display: block; margin-top: 15px; font-weight: bold; color: #333; }
+        input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; transition: border 0.3s; }
+        input:focus { border-color: #1a73e8; outline: none; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        button { width: 100%; padding: 15px; background: linear-gradient(135deg, #1a73e8, #1557b0); color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 25px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 10px rgba(26,115,232,0.3); }
+        
+        .result-card { margin-top: 20px; padding: 15px; border-radius: 10px; display: none; text-align: center; border: 1px solid #ddd; }
+        #c1_box { background-color: #e8f0fe; border-color: #1a73e8; }
+        #empfehlung_box { background-color: #e6ffed; border-color: #28a745; margin-top: 10px; }
+        .val-large { font-size: 1.4em; font-weight: bold; display: block; margin-top: 5px; }
+        
+        /* Balken-Visualisierung */
+        .bar-container { width: 100%; background: #eee; height: 8px; border-radius: 4px; margin-top: 5px; overflow: hidden; }
+        .bar-fill { height: 100%; background: #1a73e8; transition: width 0.5s; }
+        .bar-limit { border-right: 2px solid red; height: 100%; width: 100%; }
+
         table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
-        th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
-        th { background-color: #f8f9fa; }
-        .no-result { color: #d93025; margin-top: 20px; font-weight: bold; }
+        th, td { border-bottom: 1px solid #eee; padding: 12px 8px; text-align: left; }
+        th { background-color: #f8f9fa; color: #666; text-transform: uppercase; font-size: 0.75em; }
+        .unit-hint { color: #888; font-size: 0.8em; }
+        .no-result { color: #d93025; margin-top: 20px; font-weight: bold; padding: 20px; background: #fce8e6; border-radius: 10px; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>⚡ C2 Analyse</h2>
-    <p style="font-size: 0.8em; color: #666;">Fixwerte: CL = 300pF | RM = 2MΩ</p>
+    <h2>⚡ C2 Profi-Analyse</h2>
+    <div class="info-box">
+        Einheiten werden automatisch angepasst (pF, nF, µF).<br>
+        Der blaue Balken zeigt die Auslastung zum 2,5µA Limit.
+    </div>
 
-    <label>C1 (F):</label>
-    <input type="number" id="input_c1" step="any" value="0.000001">
+    <label for="input_isc">Kurzschlussstrom I_sc (A):</label>
+    <input type="number" id="input_isc" step="any" placeholder="z.B. 0.0005">
 
-    <label>Nennspannung Un (V):</label>
-    <input type="number" id="input_un" value="230">
+    <div class="grid">
+        <div>
+            <label for="input_u_min">U_min (V):</label>
+            <input type="number" id="input_u_min" placeholder="200">
+        </div>
+        <div>
+            <label for="input_u_max">U_max (V):</label>
+            <input type="number" id="input_u_max" placeholder="250">
+        </div>
+    </div>
 
     <button onclick="berechne()">Analyse starten</button>
+
+    <div id="c1_box" class="result-card">
+        Berechnete Kapazität <strong>C1</strong>:
+        <span id="c1_val" class="val-large" style="color:#1a73e8">0</span>
+    </div>
+
+    <div id="empfehlung_box" class="result-card">
+        Empfohlener Standardwert <strong>C2</strong>:
+        <span id="empfehlung_val" class="val-large" style="color:#28a745">0</span>
+    </div>
 
     <div id="ausgabe"></div>
 </div>
 
 <script>
-    function berechne() {
-        // 1. Werte aus den Feldern holen
-        const c1 = parseFloat(document.getElementById('input_c1').value);
-        const un = parseFloat(document.getElementById('input_un').value);
-        const ausgabeDiv = document.getElementById('ausgabe');
+    // Hilfsfunktion für Einheiten (Verbesserung 3)
+    function formatFarad(value) {
+        if (value === 0) return "0 F";
+        let absVal = Math.abs(value);
+        if (absVal >= 1e-6) return (value * 1e6).toFixed(2) + " µF";
+        if (absVal >= 1e-9) return (value * 1e9).toFixed(2) + " nF";
+        if (absVal >= 1e-12) return (value * 1e12).toFixed(1) + " pF";
+        return value.toExponential(2) + " F";
+    }
 
-        // 2. Konstanten (wie in deinem C-Code)
+    function berechne() {
+        const isc = parseFloat(document.getElementById('input_isc').value);
+        let uMin = parseFloat(document.getElementById('input_u_min').value);
+        let uMax = parseFloat(document.getElementById('input_u_max').value);
+        
+        const ausgabeDiv = document.getElementById('ausgabe');
+        const c1Box = document.getElementById('c1_box');
+        const empfBox = document.getElementById('empfehlung_box');
+
+        if (!isc || !uMin || !uMax) {
+            ausgabeDiv.innerHTML = "<div class='no-result'>Bitte füllen Sie alle Felder aus.</div>";
+            return;
+        }
+        if (uMin > uMax) [uMin, uMax] = [uMax, uMin];
+
+        // C1 Berechnung
+        const c1 = isc / (2 * Math.PI * 50 * ((uMin + uMax) / 2));
+        document.getElementById('c1_val').innerText = formatFarad(c1);
+        c1Box.style.display = "block";
+
         const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
-        const CL = 300e-12;
-        const RM = 2e6;
         const LIMIT_HOCH = 2.5e-6;
         const LIMIT_NIEDRIG = 1.67e-6;
+        
+        let treffer = [];
+        let html = "<table><tr><th>C2 Wert</th><th>I_max Auslastung</th><th>I_min</th></tr>";
 
-        let gefunden = false;
-        let tabelleHTML = "<table><tr><th>C2 (F)</th><th>I (45%)</th><th>I (10%)</th></tr>";
-
-        // 3. Die Schleifen (identisch zum C-Code)
         for (let d = -12; d <= -3; d++) {
             let potenz = Math.pow(10, d);
-            for (let i = 0; i < E12.length; i++) {
-                let c2 = E12[i] * potenz;
-                
-                // Formel: I = (Faktor * Un * (C1 / (C1 + C2 + CL))) / RM
-                let vTeiler = c1 / (c1 + c2 + CL);
-                let iHoch = (0.45 * un * vTeiler) / RM;
-                let iNiedrig = (0.10 * un * vTeiler) / RM;
+            for (let v of E12) {
+                let c2 = v * potenz;
+                let vTeiler = c1 / (c1 + c2 + 300e-12);
+                let iMax = (0.45 * uMax * vTeiler) / 2e6;
+                let iMin = (0.10 * uMin * vTeiler) / 2e6;
 
-                // 4. Prüfung der Bedingungen
-                if (iHoch > LIMIT_HOCH && iNiedrig <= LIMIT_NIEDRIG) {
-                    tabelleHTML += `<tr>
-                        <td>${c2.toExponential(1)}</td>
-                        <td>${iHoch.toExponential(2)} A</td>
-                        <td>${iNiedrig.toExponential(2)} A</td>
+                if (iMax > LIMIT_HOCH && iMin <= LIMIT_NIEDRIG) {
+                    treffer.push(c2);
+                    
+                    // Visualisierung (Verbesserung 4)
+                    let prozent = Math.min((iMax / LIMIT_HOCH) * 50, 100); 
+                    
+                    html += `<tr>
+                        <td><strong>${formatFarad(c2)}</strong></td>
+                        <td>
+                            ${(iMax * 1e6).toFixed(2)} µA
+                            <div class="bar-container"><div class="bar-fill" style="width: ${prozent}%"></div></div>
+                        </td>
+                        <td>${(iMin * 1e6).toFixed(2)} µA</td>
                     </tr>`;
-                    gefunden = true;
                 }
             }
         }
 
-        // 5. Ergebnis anzeigen
-        if (gefunden) {
-            ausgabeDiv.innerHTML = tabelleHTML + "</table>";
+        if (treffer.length > 0) {
+            let empf = treffer[Math.floor(treffer.length / 2)];
+            document.getElementById('empfehlung_val').innerText = formatFarad(empf);
+            empfBox.style.display = "block";
+            ausgabeDiv.innerHTML = html + "</table>";
         } else {
-            ausgabeDiv.innerHTML = "<div class='no-result'>Keine passenden Werte gefunden.</div>";
+            empfBox.style.display = "none";
+            ausgabeDiv.innerHTML = "<div class='no-result'>Kein passender C2-Wert gefunden. Versuchen Sie einen anderen Spannungsbereich.</div>";
         }
     }
 </script>
