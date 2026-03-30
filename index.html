@@ -3,63 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C2 Profi-Analyse</title>
+    <title>C2 Analyse - Multi-Modus</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
         .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 600px; width: 100%; }
-        h2 { color: #1a73e8; border-bottom: 2px solid #e8f0fe; padding-bottom: 10px; margin-top: 0; }
-        .info-box { background: #f8f9fa; padding: 12px; border-radius: 8px; font-size: 0.85em; color: #555; margin-bottom: 20px; border-left: 4px solid #1a73e8; }
+        h2 { color: #d93025; border-bottom: 2px solid #fce8e6; padding-bottom: 10px; margin-top: 0; }
+        .info-box { background: #fff4e5; padding: 12px; border-radius: 8px; font-size: 0.85em; color: #666; margin-bottom: 20px; border-left: 4px solid #ff9800; }
+        
         label { display: block; margin-top: 15px; font-weight: bold; color: #333; }
-        input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; transition: border 0.3s; }
-        input:focus { border-color: #1a73e8; outline: none; }
+        select, input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        select { background-color: #f8f9fa; cursor: pointer; border: 2px solid #d93025; }
+        
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        button { width: 100%; padding: 15px; background: linear-gradient(135deg, #1a73e8, #1557b0); color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 25px; font-weight: bold; font-size: 16px; box-shadow: 0 4px 10px rgba(26,115,232,0.3); }
+        .hidden { display: none; }
+        
+        button { width: 100%; padding: 15px; background: linear-gradient(135deg, #d93025, #a8231a); color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 25px; font-weight: bold; font-size: 16px; }
         
         .result-card { margin-top: 20px; padding: 15px; border-radius: 10px; display: none; text-align: center; border: 1px solid #ddd; }
-        #c1_box { background-color: #e8f0fe; border-color: #1a73e8; }
+        #c1_display_box { background-color: #f8f9fa; }
         #empfehlung_box { background-color: #e6ffed; border-color: #28a745; margin-top: 10px; }
         .val-large { font-size: 1.4em; font-weight: bold; display: block; margin-top: 5px; }
         
-        /* Balken-Visualisierung */
         .bar-container { width: 100%; background: #eee; height: 8px; border-radius: 4px; margin-top: 5px; overflow: hidden; }
-        .bar-fill { height: 100%; background: #1a73e8; transition: width 0.5s; }
-        .bar-limit { border-right: 2px solid red; height: 100%; width: 100%; }
+        .bar-fill { height: 100%; background: #d93025; transition: width 0.5s; }
 
         table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
         th, td { border-bottom: 1px solid #eee; padding: 12px 8px; text-align: left; }
-        th { background-color: #f8f9fa; color: #666; text-transform: uppercase; font-size: 0.75em; }
-        .unit-hint { color: #888; font-size: 0.8em; }
+        th { background-color: #f8f9fa; color: #666; font-size: 0.75em; text-transform: uppercase; }
         .no-result { color: #d93025; margin-top: 20px; font-weight: bold; padding: 20px; background: #fce8e6; border-radius: 10px; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>⚡ C2 Profi-Analyse</h2>
-    <div class="info-box">
-        Einheiten werden automatisch angepasst (pF, nF, µF).<br>
-        Der blaue Balken zeigt die Auslastung zum 2,5µA Limit.
-    </div>
+    <h2>⚡ C2 Analyse Tool</h2>
+    
+    <label for="modus">Berechnungs-Modus wählen:</label>
+    <select id="modus" onchange="updateModus()">
+        <option value="neu">1. Berechnung Neuanlage (C1 bekannt)</option>
+        <option value="retrofit">2. Retrofit Einbau (via Kurzschlussstrom)</option>
+        <option value="magnet">3. Retrofit Magnetgehäuse (Platzhalter)</option>
+    </select>
 
-    <label for="input_isc">Kurzschlussstrom I_sc (A):</label>
-    <input type="number" id="input_isc" step="any" placeholder="z.B. 0.0005">
-
-    <div class="grid">
-        <div>
-            <label for="input_u_min">U_min (V):</label>
-            <input type="number" id="input_u_min" placeholder="200">
+    <div id="input_area">
+        <!-- Spannungsbereich (Immer sichtbar) -->
+        <div class="grid">
+            <div>
+                <label for="input_u_min">U_min (V) L-E:</label>
+                <input type="number" id="input_u_min" placeholder="z.B. 230">
+            </div>
+            <div>
+                <label for="input_u_max">U_max (V) L-E:</label>
+                <input type="number" id="input_u_max" placeholder="z.B. 230">
+            </div>
         </div>
-        <div>
-            <label for="input_u_max">U_max (V):</label>
-            <input type="number" id="input_u_max" placeholder="250">
+
+        <!-- Feld für Modus 1 -->
+        <div id="field_c1" class="hidden">
+            <label for="input_c1">Direkte Kapazität C1 (F):</label>
+            <input type="number" id="input_c1" step="any" placeholder="z.B. 2.15e-11">
+        </div>
+
+        <!-- Feld für Modus 2 -->
+        <div id="field_isc">
+            <label for="input_isc">Kurzschlussstrom I_sc (A) gegen Erde:</label>
+            <input type="number" id="input_isc" step="any" placeholder="z.B. 0.000039">
         </div>
     </div>
 
     <button onclick="berechne()">Analyse starten</button>
 
-    <div id="c1_box" class="result-card">
-        Berechnete Kapazität <strong>C1</strong>:
-        <span id="c1_val" class="val-large" style="color:#1a73e8">0</span>
+    <div id="c1_display_box" class="result-card">
+        Effektive Kapazität <strong>C1</strong>:
+        <span id="c1_val" class="val-large" style="color:#555">0</span>
     </div>
 
     <div id="empfehlung_box" class="result-card">
@@ -71,7 +87,27 @@
 </div>
 
 <script>
-    // Hilfsfunktion für Einheiten (Verbesserung 3)
+    // Initialisierung beim Laden
+    window.onload = updateModus;
+
+    function updateModus() {
+        const modus = document.getElementById('modus').value;
+        const fieldC1 = document.getElementById('field_c1');
+        const fieldIsc = document.getElementById('field_isc');
+        
+        // UI Reset
+        fieldC1.classList.add('hidden');
+        fieldIsc.classList.add('hidden');
+
+        if (modus === 'neu') {
+            fieldC1.classList.remove('hidden');
+        } else if (modus === 'retrofit') {
+            fieldIsc.classList.remove('hidden');
+        } else if (modus === 'magnet') {
+            // Noch keine Felder definiert
+        }
+    }
+
     function formatFarad(value) {
         if (value === 0) return "0 F";
         let absVal = Math.abs(value);
@@ -82,31 +118,52 @@
     }
 
     function berechne() {
-        const isc = parseFloat(document.getElementById('input_isc').value);
-        let uMin = parseFloat(document.getElementById('input_u_min').value);
-        let uMax = parseFloat(document.getElementById('input_u_max').value);
-        
+        const modus = document.getElementById('modus').value;
+        const uMin = parseFloat(document.getElementById('input_u_min').value);
+        const uMax = parseFloat(document.getElementById('input_u_max').value);
         const ausgabeDiv = document.getElementById('ausgabe');
-        const c1Box = document.getElementById('c1_box');
+        const c1DisplayBox = document.getElementById('c1_display_box');
         const empfBox = document.getElementById('empfehlung_box');
 
-        if (!isc || !uMin || !uMax) {
-            ausgabeDiv.innerHTML = "<div class='no-result'>Bitte füllen Sie alle Felder aus.</div>";
+        if (isNaN(uMin) || isNaN(uMax)) {
+            ausgabeDiv.innerHTML = "<div class='no-result'>Bitte Spannungsbereich angeben.</div>";
             return;
         }
-        if (uMin > uMax) [uMin, uMax] = [uMax, uMin];
 
-        // C1 Berechnung
-        const c1 = isc / (2 * Math.PI * 50 * ((uMin + uMax) / 2));
+        let c1 = 0;
+        const f = 50;
+        const uAvg = (uMin + uMax) / 2;
+
+        // Logik-Trennung nach Modus
+        if (modus === 'neu') {
+            c1 = parseFloat(document.getElementById('input_c1').value);
+        } else if (modus === 'retrofit') {
+            const isc = parseFloat(document.getElementById('input_isc').value);
+            if (isNaN(isc)) {
+                ausgabeDiv.innerHTML = "<div class='no-result'>Bitte Kurzschlussstrom eingeben.</div>";
+                return;
+            }
+            c1 = isc / (2 * Math.PI * f * uAvg);
+        } else if (modus === 'magnet') {
+            ausgabeDiv.innerHTML = "<div class='info-box'>Berechnung für Magnetgehäuse folgt in Kürze.</div>";
+            return;
+        }
+
+        if (!c1 || c1 <= 0) {
+            ausgabeDiv.innerHTML = "<div class='no-result'>Ungültige Eingabewerte für C1.</div>";
+            return;
+        }
+
+        // Anzeige C1
         document.getElementById('c1_val').innerText = formatFarad(c1);
-        c1Box.style.display = "block";
+        c1DisplayBox.style.display = "block";
 
+        // C2 Suche (Identisch für Modus 1 & 2)
         const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
         const LIMIT_HOCH = 2.5e-6;
         const LIMIT_NIEDRIG = 1.67e-6;
-        
         let treffer = [];
-        let html = "<table><tr><th>C2 Wert</th><th>I_max Auslastung</th><th>I_min</th></tr>";
+        let html = "<table><tr><th>C2 (E12)</th><th>I_max (@Umax L-E)</th><th>I_min (@Umin L-E)</th></tr>";
 
         for (let d = -12; d <= -3; d++) {
             let potenz = Math.pow(10, d);
@@ -118,16 +175,10 @@
 
                 if (iMax > LIMIT_HOCH && iMin <= LIMIT_NIEDRIG) {
                     treffer.push(c2);
-                    
-                    // Visualisierung (Verbesserung 4)
                     let prozent = Math.min((iMax / LIMIT_HOCH) * 50, 100); 
-                    
                     html += `<tr>
                         <td><strong>${formatFarad(c2)}</strong></td>
-                        <td>
-                            ${(iMax * 1e6).toFixed(2)} µA
-                            <div class="bar-container"><div class="bar-fill" style="width: ${prozent}%"></div></div>
-                        </td>
+                        <td>${(iMax * 1e6).toFixed(2)} µA <div class="bar-container"><div class="bar-fill" style="width: ${prozent}%"></div></div></td>
                         <td>${(iMin * 1e6).toFixed(2)} µA</td>
                     </tr>`;
                 }
@@ -141,10 +192,9 @@
             ausgabeDiv.innerHTML = html + "</table>";
         } else {
             empfBox.style.display = "none";
-            ausgabeDiv.innerHTML = "<div class='no-result'>Kein passender C2-Wert gefunden. Versuchen Sie einen anderen Spannungsbereich.</div>";
+            ausgabeDiv.innerHTML = "<div class='no-result'>Kein passender C2 gefunden.</div>";
         }
     }
 </script>
-
 </body>
 </html>
