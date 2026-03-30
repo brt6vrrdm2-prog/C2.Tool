@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C2 Analyse - Nennspannungs-Modus</title>
+    <title>C2 Analyse - Inkl. Leitungskapazität</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
         .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 600px; width: 100%; }
@@ -17,7 +17,8 @@
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .hidden { display: none; }
         
-        button { width: 100%; padding: 15px; background: linear-gradient(135deg, #d93025, #a8231a); color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 25px; font-weight: bold; font-size: 16px; }
+        button { width: 100%; padding: 15px; background: linear-gradient(135deg, #d93025, #a8231a); color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 25px; font-weight: bold; font-size: 16px; transition: transform 0.1s; }
+        button:active { transform: scale(0.98); }
         
         .result-card { margin-top: 20px; padding: 15px; border-radius: 10px; display: none; text-align: center; border: 1px solid #ddd; }
         #c1_display_box { background-color: #f8f9fa; }
@@ -40,7 +41,8 @@
     <h2>⚡ C2 Analyse Tool</h2>
     
     <div class="info-box">
-        <strong>Spannungs-Hinweis:</strong> Geben Sie die Nennspannung (L-L) ein (z.B. 400V oder 10000V). Das Tool rechnet automatisch intern mit der Spannung gegen Erde (L-E).
+        <strong>Konfiguration:</strong> U in V (L-L), I in µA, C1 in pF.<br>
+        <strong>Leitung:</strong> Kapazität wird mit 100 pF/m berechnet.
     </div>
 
     <label for="modus">Berechnungs-Modus wählen:</label>
@@ -51,29 +53,33 @@
     </select>
 
     <div id="input_area">
-        <!-- Nennspannungsbereich L-L -->
+        <!-- Spannungsbereich L-L -->
         <div class="grid">
             <div>
                 <label for="input_u_min">U_min Nenn (V) L-L:</label>
-                <input type="number" id="input_u_min" placeholder="z.B. 400">
+                <input type="number" id="input_u_min" placeholder="0">
             </div>
             <div>
                 <label for="input_u_max">U_max Nenn (V) L-L:</label>
-                <input type="number" id="input_u_max" placeholder="z.B. 400">
+                <input type="number" id="input_u_max" placeholder="0">
             </div>
         </div>
 
+        <!-- Leitungslänge (Immer sichtbar) -->
+        <label for="input_length">Leitungslänge (Meter):</label>
+        <input type="number" id="input_length" step="any" placeholder="z.B. 5">
+        <div class="calc-note">Beeinflusst die Gesamtkapazität (100 pF pro Meter).</div>
+
         <!-- Feld für Modus 1 -->
         <div id="field_c1" class="hidden">
-            <label for="input_c1">Direkte Kapazität C1 (F):</label>
-            <input type="number" id="input_c1" step="any" placeholder="z.B. 2.15e-11">
+            <label for="input_c1_pf">Kapazität C1 (pF):</label>
+            <input type="number" id="input_c1_pf" step="any" placeholder="z.B. 21.5">
         </div>
 
         <!-- Feld für Modus 2 -->
         <div id="field_isc">
-            <label for="input_isc">Kurzschlussstrom I_sc (A):</label>
-            <input type="number" id="input_isc" step="any" placeholder="z.B. 0.000039">
-            <div class="calc-note">Gemessen gegen Erde.</div>
+            <label for="input_isc_micro">Kurzschlussstrom I_sc (µA):</label>
+            <input type="number" id="input_isc_micro" step="any" placeholder="z.B. 39">
         </div>
     </div>
 
@@ -103,6 +109,12 @@
         
         fieldC1.classList.toggle('hidden', modus !== 'neu');
         fieldIsc.classList.toggle('hidden', modus !== 'retrofit');
+
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => input.value = "");
+        document.getElementById('c1_display_box').style.display = "none";
+        document.getElementById('empfehlung_box').style.display = "none";
+        document.getElementById('ausgabe').innerHTML = "";
     }
 
     function formatFarad(value) {
@@ -118,64 +130,72 @@
         const modus = document.getElementById('modus').value;
         const uMinLL = parseFloat(document.getElementById('input_u_min').value);
         const uMaxLL = parseFloat(document.getElementById('input_u_max').value);
+        const length = parseFloat(document.getElementById('input_length').value) || 0;
+        
         const ausgabeDiv = document.getElementById('ausgabe');
         const c1DisplayBox = document.getElementById('c1_display_box');
         const empfBox = document.getElementById('empfehlung_box');
 
         if (isNaN(uMinLL) || isNaN(uMaxLL)) {
-            ausgabeDiv.innerHTML = "<div class='no-result'>Bitte Nennspannungen (L-L) angeben.</div>";
+            ausgabeDiv.innerHTML = "<div class='no-result'>Bitte Nennspannungen angeben.</div>";
             return;
         }
 
-        // --- AUTOMATISCHE UMRECHNUNG AUF LEITER-ERDE ---
         const sqrt3 = Math.sqrt(3);
         const uMinLE = uMinLL / sqrt3;
         const uMaxLE = uMaxLL / sqrt3;
         const uAvgLE = (uMinLE + uMaxLE) / 2;
         const f = 50;
 
+        // Berechnung der Leitungskapazität: 100 pF/m
+        const cLine = length * 100 * 1e-12;
+
         let c1 = 0;
 
         if (modus === 'neu') {
-            c1 = parseFloat(document.getElementById('input_c1').value);
-        } else if (modus === 'retrofit') {
-            const isc = parseFloat(document.getElementById('input_isc').value);
-            if (isNaN(isc)) {
-                ausgabeDiv.innerHTML = "<div class='no-result'>Bitte Kurzschlussstrom eingeben.</div>";
+            let c1pF = parseFloat(document.getElementById('input_c1_pf').value);
+            if (isNaN(c1pF)) {
+                ausgabeDiv.innerHTML = "<div class='no-result'>Bitte C1 eingeben.</div>";
                 return;
             }
-            // Formel nutzt jetzt uAvgLE
-            c1 = isc / (2 * Math.PI * f * uAvgLE);
-        } else if (modus === 'magnet') {
-            ausgabeDiv.innerHTML = "<div class='info-box'>Modus Magnetgehäuse: Berechnung folgt.</div>";
-            return;
+            c1 = c1pF * 1e-12;
+        } else if (modus === 'retrofit') {
+            let iscMicro = parseFloat(document.getElementById('input_isc_micro').value);
+            if (isNaN(iscMicro)) {
+                ausgabeDiv.innerHTML = "<div class='no-result'>Bitte I_sc eingeben.</div>";
+                return;
+            }
+            c1 = (iscMicro * 1e-6) / (2 * Math.PI * f * uAvgLE);
         }
 
         if (!c1 || c1 <= 0) {
-            ausgabeDiv.innerHTML = "<div class='no-result'>Berechnung fehlgeschlagen. Werte prüfen.</div>";
+            ausgabeDiv.innerHTML = "<div class='no-result'>Ungültige Werte.</div>";
             return;
         }
 
-        // Anzeige Ergebnisse
         document.getElementById('c1_val').innerText = formatFarad(c1);
-        document.getElementById('u_le_info').innerText = `Berechnet mit U(L-E) avg: ${uAvgLE.toFixed(1)} V`;
+        document.getElementById('u_le_info').innerText = `U(L-E) avg: ${uAvgLE.toFixed(1)} V | C_Line: ${formatFarad(cLine)}`;
         c1DisplayBox.style.display = "block";
 
         const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
         const LIMIT_HOCH = 2.5e-6;
         const LIMIT_NIEDRIG = 1.67e-6;
+        const CL = 300e-12;
+        const RM = 2e6;
+        
         let treffer = [];
-        let html = "<table><tr><th>C2 (E12)</th><th>I_max (@Umax L-E)</th><th>I_min (@Umin L-E)</th></tr>";
+        let html = "<table><tr><th>C2 (E12)</th><th>I_max (@Umax)</th><th>I_min (@Umin)</th></tr>";
 
         for (let d = -12; d <= -3; d++) {
             let potenz = Math.pow(10, d);
             for (let v of E12) {
                 let c2 = v * potenz;
-                let vTeiler = c1 / (c1 + c2 + 300e-12);
                 
-                // Berechnung der Ströme IMMER mit L-E Spannungen
-                let iMax = (0.45 * uMaxLE * vTeiler) / 2e6;
-                let iMin = (0.10 * uMinLE * vTeiler) / 2e6;
+                // Erweiterter Spannungsteiler inkl. Leitungskapazität
+                let vTeiler = c1 / (c1 + c2 + CL + cLine);
+                
+                let iMax = (0.45 * uMaxLE * vTeiler) / RM;
+                let iMin = (0.10 * uMinLE * vTeiler) / RM;
 
                 if (iMax > LIMIT_HOCH && iMin <= LIMIT_NIEDRIG) {
                     treffer.push(c2);
@@ -196,7 +216,7 @@
             ausgabeDiv.innerHTML = html + "</table>";
         } else {
             empfBox.style.display = "none";
-            ausgabeDiv.innerHTML = "<div class='no-result'>Kein passender C2 für diesen Spannungsbereich gefunden.</div>";
+            ausgabeDiv.innerHTML = "<div class='no-result'>Kein C2 gefunden (Leitungskapazität zu hoch?).</div>";
         }
     }
 </script>
