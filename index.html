@@ -3,96 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C2 Festspannungs-Analyse</title>
+    <title>C2 Analyse Tool</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
-        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 500px; width: 100%; }
-        h2 { color: #1a73e8; margin-top: 0; border-bottom: 2px solid #e8f0fe; padding-bottom: 10px; }
-        .info { font-size: 0.9em; color: #666; margin-bottom: 20px; background: #f8f9fa; padding: 10px; border-radius: 6px; }
-        label { display: block; margin-top: 15px; font-weight: bold; color: #333; }
-        input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 12px; background-color: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin-top: 25px; transition: background 0.3s; }
+        body { font-family: sans-serif; background-color: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); max-width: 450px; width: 100%; }
+        h2 { color: #1a73e8; border-bottom: 2px solid #e8f0fe; padding-bottom: 10px; }
+        label { display: block; margin-top: 15px; font-weight: bold; }
+        input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 20px; font-weight: bold; }
         button:hover { background-color: #1557b0; }
-        #output { margin-top: 25px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85em; }
-        th, td { border: 1px solid #eee; padding: 10px; text-align: left; }
-        th { background-color: #f8f9fa; color: #555; }
-        tr:nth-child(even) { background-color: #fafafa; }
-        .no-result { color: #d93025; font-weight: bold; padding: 10px; background: #fce8e6; border-radius: 6px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
+        th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
+        th { background-color: #f8f9fa; }
+        .no-result { color: #d93025; margin-top: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>⚡ C2 Analyse (Fixe Spannung)</h2>
-    <div class="info">
-        <strong>Fixwerte:</strong><br>
-        CL = 3.0e-10 F (300 pF) | RM = 2.0e6 Ohm (2 MΩ)
-    </div>
+    <h2>⚡ C2 Analyse</h2>
+    <p style="font-size: 0.8em; color: #666;">Fixwerte: CL = 300pF | RM = 2MΩ</p>
 
-    <label for="c1">Eingabe C1 (F):</label>
-    <input type="number" id="c1" step="any" value="0.000001">
+    <label>C1 (F):</label>
+    <input type="number" id="input_c1" step="any" value="0.000001">
 
-    <label for="u_fix">Nennspannung Un (V):</label>
-    <input type="number" id="u_fix" value="230">
+    <label>Nennspannung Un (V):</label>
+    <input type="number" id="input_un" value="230">
 
-    <button onclick="starteAnalyse()">Analyse starten</button>
+    <button onclick="berechne()">Analyse starten</button>
 
-    <div id="output"></div>
+    <div id="ausgabe"></div>
 </div>
 
 <script>
-    const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];[cite: 2]
-    const FAKTOR_HOCH = 0.45;[cite: 2]
-    const FAKTOR_NIEDRIG = 0.10;[cite: 2]
-    const I_LIMIT_HOCH = 2.5e-6;[cite: 2]
-    const I_LIMIT_NIEDRIG = 1.67e-6;[cite: 2]
-    const CL_FIX = 300e-12;[cite: 2]
-    const RM_FIX = 2e6;[cite: 2]
+    function berechne() {
+        // 1. Werte aus den Feldern holen
+        const c1 = parseFloat(document.getElementById('input_c1').value);
+        const un = parseFloat(document.getElementById('input_un').value);
+        const ausgabeDiv = document.getElementById('ausgabe');
 
-    function berechneStrom(c1, c2, cl, un, faktor, rm) {
-        let vTeiler = c1 / (c1 + c2 + cl);[cite: 2]
-        return (faktor * un * vTeiler) / rm;[cite: 2]
-    }
-
-    function starteAnalyse() {
-        const c1 = parseFloat(document.getElementById('c1').value);
-        const uFix = parseFloat(document.getElementById('u_fix').value);
-        const output = document.getElementById('output');
+        // 2. Konstanten (wie in deinem C-Code)
+        const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
+        const CL = 300e-12;
+        const RM = 2e6;
+        const LIMIT_HOCH = 2.5e-6;
+        const LIMIT_NIEDRIG = 1.67e-6;
 
         let gefunden = false;
-        let html = `<table>
-            <tr>
-                <th>C2-Wert (F)</th>
-                <th>I (45% von Un)</th>
-                <th>I (10% von Un)</th>
-            </tr>`;
+        let tabelleHTML = "<table><tr><th>C2 (F)</th><th>I (45%)</th><th>I (10%)</th></tr>";
 
-        for (let d = -12; d <= -3; d++) {[cite: 2]
-            let potenz = Math.pow(10, d);[cite: 2]
-            for (let i = 0; i < 12; i++) {[cite: 2]
-                let c2 = E12[i] * potenz;[cite: 2]
+        // 3. Die Schleifen (identisch zum C-Code)
+        for (let d = -12; d <= -3; d++) {
+            let potenz = Math.pow(10, d);
+            for (let i = 0; i < E12.length; i++) {
+                let c2 = E12[i] * potenz;
                 
-                // Berechnung für die feste Spannung
-                let iHoch = berechneStrom(c1, c2, CL_FIX, uFix, FAKTOR_HOCH, RM_FIX);[cite: 2]
-                let iNiedrig = berechneStrom(c1, c2, CL_FIX, uFix, FAKTOR_NIEDRIG, RM_FIX);[cite: 2]
+                // Formel: I = (Faktor * Un * (C1 / (C1 + C2 + CL))) / RM
+                let vTeiler = c1 / (c1 + c2 + CL);
+                let iHoch = (0.45 * un * vTeiler) / RM;
+                let iNiedrig = (0.10 * un * vTeiler) / RM;
 
-                // Prüfung der Limits
-                if (iHoch > I_LIMIT_HOCH && iNiedrig <= I_LIMIT_NIEDRIG) {[cite: 2]
-                    html += `<tr>
+                // 4. Prüfung der Bedingungen
+                if (iHoch > LIMIT_HOCH && iNiedrig <= LIMIT_NIEDRIG) {
+                    tabelleHTML += `<tr>
                         <td>${c2.toExponential(1)}</td>
-                        <td>${iHoch.toExponential(3)} A</td>
-                        <td>${iNiedrig.toExponential(3)} A</td>
+                        <td>${iHoch.toExponential(2)} A</td>
+                        <td>${iNiedrig.toExponential(2)} A</td>
                     </tr>`;
                     gefunden = true;
                 }
             }
         }
 
+        // 5. Ergebnis anzeigen
         if (gefunden) {
-            output.innerHTML = html + "</table>";
+            ausgabeDiv.innerHTML = tabelleHTML + "</table>";
         } else {
-            output.innerHTML = `<div class="no-result">Kein passender C2 für ${uFix}V gefunden.</div>`;[cite: 2]
+            ausgabeDiv.innerHTML = "<div class='no-result'>Keine passenden Werte gefunden.</div>";
         }
     }
 </script>
