@@ -3,94 +3,222 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C2 Analyse - TML Energie-Systeme</title>
+    <title>C2 Analyse - Inkl. Leitungskapazität</title>
     <style>
-        :root {
-            --tml-red-dark: #800000;
-            --tml-red-bright: #e30613;
-            --tml-blue: #003366;
-            --tml-gray-bg: #f8f8f8;
-            --tml-text-black: #000000;
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
+        .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 600px; width: 100%; }
+        h2 { color: #d93025; border-bottom: 2px solid #fce8e6; padding-bottom: 10px; margin-top: 0; }
+        .info-box { background: #e8f0fe; padding: 12px; border-radius: 8px; font-size: 0.85em; color: #31708f; margin-bottom: 20px; border-left: 4px solid #31708f; }
+        
+        label { display: block; margin-top: 15px; font-weight: bold; color: #333; }
+        select, input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        select { background-color: #f8f9fa; cursor: pointer; border: 2px solid #d93025; }
+        
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .hidden { display: none; }
+        
+        button { width: 100%; padding: 15px; background: linear-gradient(135deg, #d93025, #a8231a); color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 25px; font-weight: bold; font-size: 16px; transition: transform 0.1s; }
+        button:active { transform: scale(0.98); }
+        
+        .result-card { margin-top: 20px; padding: 15px; border-radius: 10px; display: none; text-align: center; border: 1px solid #ddd; }
+        #c1_display_box { background-color: #f8f9fa; }
+        #empfehlung_box { background-color: #e6ffed; border-color: #28a745; margin-top: 10px; }
+        .val-large { font-size: 1.4em; font-weight: bold; display: block; margin-top: 5px; }
+        
+        .bar-container { width: 100%; background: #eee; height: 8px; border-radius: 4px; margin-top: 5px; overflow: hidden; }
+        .bar-fill { height: 100%; background: #d93025; transition: width 0.5s; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 0.9em; }
+        th, td { border-bottom: 1px solid #eee; padding: 12px 8px; text-align: left; }
+        th { background-color: #f8f9fa; color: #666; font-size: 0.75em; text-transform: uppercase; }
+        .no-result { color: #d93025; margin-top: 20px; font-weight: bold; padding: 20px; background: #fce8e6; border-radius: 10px; text-align: center; }
+        .calc-note { font-size: 0.75em; color: #888; font-style: italic; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>⚡ C2 Analyse Tool</h2>
+    
+    <div class="info-box">
+        <strong>Konfiguration:</strong> U in V (L-L), I in µA, C1 in pF.<br>
+        <strong>Leitung:</strong> Kapazität wird mit 100 pF/m berechnet.
+    </div>
+
+    <label for="modus">Berechnungs-Modus wählen:</label>
+    <select id="modus" onchange="updateModus()">
+        <option value="neu">1. Berechnung Neuanlage (C1 bekannt)</option>
+        <option value="retrofit" selected>2. Retrofit Einbau (via Kurzschlussstrom)</option>
+        <option value="magnet">3. Retrofit Magnetgehäuse</option>
+    </select>
+
+    <div id="input_area">
+        <!-- Spannungsbereich L-L -->
+        <div class="grid">
+            <div>
+                <label for="input_u_min">U_min Nenn (V) L-L:</label>
+                <input type="number" id="input_u_min" placeholder="0">
+            </div>
+            <div>
+                <label for="input_u_max">U_max Nenn (V) L-L:</label>
+                <input type="number" id="input_u_max" placeholder="0">
+            </div>
+        </div>
+
+        <!-- Leitungslänge (Immer sichtbar) -->
+        <label for="input_length">Leitungslänge (Meter):</label>
+        <input type="number" id="input_length" step="any" placeholder="z.B. 5">
+        <div class="calc-note">Beeinflusst die Gesamtkapazität (100 pF pro Meter).</div>
+
+        <!-- Feld für Modus 1 -->
+        <div id="field_c1" class="hidden">
+            <label for="input_c1_pf">Kapazität C1 (pF):</label>
+            <input type="number" id="input_c1_pf" step="any" placeholder="z.B. 21.5">
+        </div>
+
+        <!-- Feld für Modus 2 -->
+        <div id="field_isc">
+            <label for="input_isc_micro">Kurzschlussstrom I_sc (µA):</label>
+            <input type="number" id="input_isc_micro" step="any" placeholder="z.B. 39">
+        </div>
+    </div>
+
+    <button onclick="berechne()">Analyse starten</button>
+
+    <div id="c1_display_box" class="result-card">
+        Effektive Kapazität <strong>C1</strong>:
+        <span id="c1_val" class="val-large" style="color:#555">0</span>
+        <div id="u_le_info" class="calc-note"></div>
+    </div>
+
+    <div id="empfehlung_box" class="result-card">
+        Empfohlener Standardwert <strong>C2</strong>:
+        <span id="empfehlung_val" class="val-large" style="color:#28a745">0</span>
+    </div>
+
+    <div id="ausgabe"></div>
+</div>
+
+<script>
+    window.onload = updateModus;
+
+    function updateModus() {
+        const modus = document.getElementById('modus').value;
+        const fieldC1 = document.getElementById('field_c1');
+        const fieldIsc = document.getElementById('field_isc');
+        
+        fieldC1.classList.toggle('hidden', modus !== 'neu');
+        fieldIsc.classList.toggle('hidden', modus !== 'retrofit');
+
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => input.value = "");
+        document.getElementById('c1_display_box').style.display = "none";
+        document.getElementById('empfehlung_box').style.display = "none";
+        document.getElementById('ausgabe').innerHTML = "";
+    }
+
+    function formatFarad(value) {
+        if (value === 0) return "0 F";
+        let absVal = Math.abs(value);
+        if (absVal >= 1e-6) return (value * 1e6).toFixed(2) + " µF";
+        if (absVal >= 1e-9) return (value * 1e9).toFixed(2) + " nF";
+        if (absVal >= 1e-12) return (value * 1e12).toFixed(2) + " pF";
+        return value.toExponential(2) + " F";
+    }
+
+    function berechne() {
+        const modus = document.getElementById('modus').value;
+        const uMinLL = parseFloat(document.getElementById('input_u_min').value);
+        const uMaxLL = parseFloat(document.getElementById('input_u_max').value);
+        const length = parseFloat(document.getElementById('input_length').value) || 0;
+        
+        const ausgabeDiv = document.getElementById('ausgabe');
+        const c1DisplayBox = document.getElementById('c1_display_box');
+        const empfBox = document.getElementById('empfehlung_box');
+
+        if (isNaN(uMinLL) || isNaN(uMaxLL)) {
+            ausgabeDiv.innerHTML = "<div class='no-result'>Bitte Nennspannungen angeben.</div>";
+            return;
         }
 
-        body { 
-            font-family: 'Segoe UI', Tahoma, Arial, sans-serif; 
-            background-color: var(--tml-gray-bg); 
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: var(--tml-text-black);
+        const sqrt3 = Math.sqrt(3);
+        const uMinLE = uMinLL / sqrt3;
+        const uMaxLE = uMaxLL / sqrt3;
+        const uAvgLE = (uMinLE + uMaxLE) / 2;
+        const f = 50;
+
+        // Berechnung der Leitungskapazität: 100 pF/m
+        const cLine = length * 100 * 1e-12;
+
+        let c1 = 0;
+
+        if (modus === 'neu') {
+            let c1pF = parseFloat(document.getElementById('input_c1_pf').value);
+            if (isNaN(c1pF)) {
+                ausgabeDiv.innerHTML = "<div class='no-result'>Bitte C1 eingeben.</div>";
+                return;
+            }
+            c1 = c1pF * 1e-12;
+        } else if (modus === 'retrofit') {
+            let iscMicro = parseFloat(document.getElementById('input_isc_micro').value);
+            if (isNaN(iscMicro)) {
+                ausgabeDiv.innerHTML = "<div class='no-result'>Bitte I_sc eingeben.</div>";
+                return;
+            }
+            c1 = (iscMicro * 1e-6) / (2 * Math.PI * f * uAvgLE);
         }
 
-        /* TML HEADER OHNE BILDDATEI */
-        .header-top {
-            width: 100%;
-            background-color: white;
-            padding: 20px 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            border-bottom: 4px solid var(--tml-red-bright);
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        if (!c1 || c1 <= 0) {
+            ausgabeDiv.innerHTML = "<div class='no-result'>Ungültige Werte.</div>";
+            return;
         }
 
-        .logo-fallback {
-            display: flex;
-            align-items: center;
-            gap: 10px;
+        document.getElementById('c1_val').innerText = formatFarad(c1);
+        document.getElementById('u_le_info').innerText = `U(L-E) avg: ${uAvgLE.toFixed(1)} V | C_Line: ${formatFarad(cLine)}`;
+        c1DisplayBox.style.display = "block";
+
+        const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
+        const LIMIT_HOCH = 2.5e-6;
+        const LIMIT_NIEDRIG = 1.67e-6;
+        const CL = 300e-12;
+        const RM = 2e6;
+        
+        let treffer = [];
+        let html = "<table><tr><th>C2 (E12)</th><th>I_max (@Umax)</th><th>I_min (@Umin)</th></tr>";
+
+        for (let d = -12; d <= -3; d++) {
+            let potenz = Math.pow(10, d);
+            for (let v of E12) {
+                let c2 = v * potenz;
+                
+                // Erweiterter Spannungsteiler inkl. Leitungskapazität
+                let vTeiler = c1 / (c1 + c2 + CL + cLine);
+                
+                let iMax = (0.45 * uMaxLE * vTeiler) / RM;
+                let iMin = (0.10 * uMinLE * vTeiler) / RM;
+
+                if (iMax > LIMIT_HOCH && iMin <= LIMIT_NIEDRIG) {
+                    treffer.push(c2);
+                    let prozent = Math.min((iMax / LIMIT_HOCH) * 100, 100); 
+                    html += `<tr>
+                        <td><strong>${formatFarad(c2)}</strong></td>
+                        <td>${(iMax * 1e6).toFixed(2)} µA <div class="bar-container"><div class="bar-fill" style="width: ${prozent}%"></div></div></td>
+                        <td>${(iMin * 1e6).toFixed(2)} µA</td>
+                    </tr>`;
+                }
+            }
         }
 
-        .logo-box {
-            background: linear-gradient(135deg, var(--tml-red-dark), var(--tml-red-bright));
-            color: white;
-            padding: 5px 15px;
-            font-size: 32px;
-            font-weight: 900;
-            border-radius: 2px;
+        if (treffer.length > 0) {
+            let empf = treffer[Math.floor(treffer.length / 2)];
+            document.getElementById('empfehlung_val').innerText = formatFarad(empf);
+            empfBox.style.display = "block";
+            ausgabeDiv.innerHTML = html + "</table>";
+        } else {
+            empfBox.style.display = "none";
+            ausgabeDiv.innerHTML = "<div class='no-result'>Kein C2 gefunden (Leitungskapazität zu hoch?).</div>";
         }
-
-        .logo-text {
-            font-size: 24px;
-            font-weight: 700;
-            color: var(--tml-blue);
-        }
-
-        .slogan {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: #666;
-            margin-top: 8px;
-            font-weight: 600;
-        }
-
-        .container { 
-            background: white; 
-            padding: 30px; 
-            border-radius: 4px; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
-            max-width: 600px; 
-            width: 90%; 
-            margin-top: 30px;
-            margin-bottom: 50px;
-        }
-
-        h2 { 
-            color: var(--tml-blue); 
-            margin-top: 0; 
-            font-size: 22px;
-            text-align: center;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 15px;
-        }
-
-        .info-box { 
-            background: #f0f4f8; 
-            padding: 12px; 
-            border-radius: 4px; 
-            font-size: 0.85em; 
-            color: var(--tml-blue); 
-            margin-bottom: 20px;
-            
+    }
+</script>
+</body>
+</html>
