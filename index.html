@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>C2 Analyse - Multi-Modus</title>
+    <title>C2 Analyse - Nennspannungs-Modus</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #f0f2f5; padding: 20px; display: flex; justify-content: center; }
         .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 600px; width: 100%; }
         h2 { color: #d93025; border-bottom: 2px solid #fce8e6; padding-bottom: 10px; margin-top: 0; }
-        .info-box { background: #fff4e5; padding: 12px; border-radius: 8px; font-size: 0.85em; color: #666; margin-bottom: 20px; border-left: 4px solid #ff9800; }
+        .info-box { background: #e8f0fe; padding: 12px; border-radius: 8px; font-size: 0.85em; color: #31708f; margin-bottom: 20px; border-left: 4px solid #31708f; }
         
         label { display: block; margin-top: 15px; font-weight: bold; color: #333; }
         select, input { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
@@ -31,6 +31,7 @@
         th, td { border-bottom: 1px solid #eee; padding: 12px 8px; text-align: left; }
         th { background-color: #f8f9fa; color: #666; font-size: 0.75em; text-transform: uppercase; }
         .no-result { color: #d93025; margin-top: 20px; font-weight: bold; padding: 20px; background: #fce8e6; border-radius: 10px; text-align: center; }
+        .calc-note { font-size: 0.75em; color: #888; font-style: italic; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -38,23 +39,27 @@
 <div class="container">
     <h2>⚡ C2 Analyse Tool</h2>
     
+    <div class="info-box">
+        <strong>Spannungs-Hinweis:</strong> Geben Sie die Nennspannung (L-L) ein (z.B. 400V oder 10000V). Das Tool rechnet automatisch intern mit der Spannung gegen Erde (L-E).
+    </div>
+
     <label for="modus">Berechnungs-Modus wählen:</label>
     <select id="modus" onchange="updateModus()">
         <option value="neu">1. Berechnung Neuanlage (C1 bekannt)</option>
-        <option value="retrofit">2. Retrofit Einbau (via Kurzschlussstrom)</option>
-        <option value="magnet">3. Retrofit Magnetgehäuse (Platzhalter)</option>
+        <option value="retrofit" selected>2. Retrofit Einbau (via Kurzschlussstrom)</option>
+        <option value="magnet">3. Retrofit Magnetgehäuse</option>
     </select>
 
     <div id="input_area">
-        <!-- Spannungsbereich (Immer sichtbar) -->
+        <!-- Nennspannungsbereich L-L -->
         <div class="grid">
             <div>
-                <label for="input_u_min">U_min (V) L-E:</label>
-                <input type="number" id="input_u_min" placeholder="z.B. 230">
+                <label for="input_u_min">U_min Nenn (V) L-L:</label>
+                <input type="number" id="input_u_min" placeholder="z.B. 400">
             </div>
             <div>
-                <label for="input_u_max">U_max (V) L-E:</label>
-                <input type="number" id="input_u_max" placeholder="z.B. 230">
+                <label for="input_u_max">U_max Nenn (V) L-L:</label>
+                <input type="number" id="input_u_max" placeholder="z.B. 400">
             </div>
         </div>
 
@@ -66,8 +71,9 @@
 
         <!-- Feld für Modus 2 -->
         <div id="field_isc">
-            <label for="input_isc">Kurzschlussstrom I_sc (A) gegen Erde:</label>
+            <label for="input_isc">Kurzschlussstrom I_sc (A):</label>
             <input type="number" id="input_isc" step="any" placeholder="z.B. 0.000039">
+            <div class="calc-note">Gemessen gegen Erde.</div>
         </div>
     </div>
 
@@ -76,6 +82,7 @@
     <div id="c1_display_box" class="result-card">
         Effektive Kapazität <strong>C1</strong>:
         <span id="c1_val" class="val-large" style="color:#555">0</span>
+        <div id="u_le_info" class="calc-note"></div>
     </div>
 
     <div id="empfehlung_box" class="result-card">
@@ -87,7 +94,6 @@
 </div>
 
 <script>
-    // Initialisierung beim Laden
     window.onload = updateModus;
 
     function updateModus() {
@@ -95,17 +101,8 @@
         const fieldC1 = document.getElementById('field_c1');
         const fieldIsc = document.getElementById('field_isc');
         
-        // UI Reset
-        fieldC1.classList.add('hidden');
-        fieldIsc.classList.add('hidden');
-
-        if (modus === 'neu') {
-            fieldC1.classList.remove('hidden');
-        } else if (modus === 'retrofit') {
-            fieldIsc.classList.remove('hidden');
-        } else if (modus === 'magnet') {
-            // Noch keine Felder definiert
-        }
+        fieldC1.classList.toggle('hidden', modus !== 'neu');
+        fieldIsc.classList.toggle('hidden', modus !== 'retrofit');
     }
 
     function formatFarad(value) {
@@ -113,28 +110,32 @@
         let absVal = Math.abs(value);
         if (absVal >= 1e-6) return (value * 1e6).toFixed(2) + " µF";
         if (absVal >= 1e-9) return (value * 1e9).toFixed(2) + " nF";
-        if (absVal >= 1e-12) return (value * 1e12).toFixed(1) + " pF";
+        if (absVal >= 1e-12) return (value * 1e12).toFixed(2) + " pF";
         return value.toExponential(2) + " F";
     }
 
     function berechne() {
         const modus = document.getElementById('modus').value;
-        const uMin = parseFloat(document.getElementById('input_u_min').value);
-        const uMax = parseFloat(document.getElementById('input_u_max').value);
+        const uMinLL = parseFloat(document.getElementById('input_u_min').value);
+        const uMaxLL = parseFloat(document.getElementById('input_u_max').value);
         const ausgabeDiv = document.getElementById('ausgabe');
         const c1DisplayBox = document.getElementById('c1_display_box');
         const empfBox = document.getElementById('empfehlung_box');
 
-        if (isNaN(uMin) || isNaN(uMax)) {
-            ausgabeDiv.innerHTML = "<div class='no-result'>Bitte Spannungsbereich angeben.</div>";
+        if (isNaN(uMinLL) || isNaN(uMaxLL)) {
+            ausgabeDiv.innerHTML = "<div class='no-result'>Bitte Nennspannungen (L-L) angeben.</div>";
             return;
         }
 
-        let c1 = 0;
+        // --- AUTOMATISCHE UMRECHNUNG AUF LEITER-ERDE ---
+        const sqrt3 = Math.sqrt(3);
+        const uMinLE = uMinLL / sqrt3;
+        const uMaxLE = uMaxLL / sqrt3;
+        const uAvgLE = (uMinLE + uMaxLE) / 2;
         const f = 50;
-        const uAvg = (uMin + uMax) / 2;
 
-        // Logik-Trennung nach Modus
+        let c1 = 0;
+
         if (modus === 'neu') {
             c1 = parseFloat(document.getElementById('input_c1').value);
         } else if (modus === 'retrofit') {
@@ -143,22 +144,23 @@
                 ausgabeDiv.innerHTML = "<div class='no-result'>Bitte Kurzschlussstrom eingeben.</div>";
                 return;
             }
-            c1 = isc / (2 * Math.PI * f * uAvg);
+            // Formel nutzt jetzt uAvgLE
+            c1 = isc / (2 * Math.PI * f * uAvgLE);
         } else if (modus === 'magnet') {
-            ausgabeDiv.innerHTML = "<div class='info-box'>Berechnung für Magnetgehäuse folgt in Kürze.</div>";
+            ausgabeDiv.innerHTML = "<div class='info-box'>Modus Magnetgehäuse: Berechnung folgt.</div>";
             return;
         }
 
         if (!c1 || c1 <= 0) {
-            ausgabeDiv.innerHTML = "<div class='no-result'>Ungültige Eingabewerte für C1.</div>";
+            ausgabeDiv.innerHTML = "<div class='no-result'>Berechnung fehlgeschlagen. Werte prüfen.</div>";
             return;
         }
 
-        // Anzeige C1
+        // Anzeige Ergebnisse
         document.getElementById('c1_val').innerText = formatFarad(c1);
+        document.getElementById('u_le_info').innerText = `Berechnet mit U(L-E) avg: ${uAvgLE.toFixed(1)} V`;
         c1DisplayBox.style.display = "block";
 
-        // C2 Suche (Identisch für Modus 1 & 2)
         const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
         const LIMIT_HOCH = 2.5e-6;
         const LIMIT_NIEDRIG = 1.67e-6;
@@ -170,12 +172,14 @@
             for (let v of E12) {
                 let c2 = v * potenz;
                 let vTeiler = c1 / (c1 + c2 + 300e-12);
-                let iMax = (0.45 * uMax * vTeiler) / 2e6;
-                let iMin = (0.10 * uMin * vTeiler) / 2e6;
+                
+                // Berechnung der Ströme IMMER mit L-E Spannungen
+                let iMax = (0.45 * uMaxLE * vTeiler) / 2e6;
+                let iMin = (0.10 * uMinLE * vTeiler) / 2e6;
 
                 if (iMax > LIMIT_HOCH && iMin <= LIMIT_NIEDRIG) {
                     treffer.push(c2);
-                    let prozent = Math.min((iMax / LIMIT_HOCH) * 50, 100); 
+                    let prozent = Math.min((iMax / LIMIT_HOCH) * 100, 100); 
                     html += `<tr>
                         <td><strong>${formatFarad(c2)}</strong></td>
                         <td>${(iMax * 1e6).toFixed(2)} µA <div class="bar-container"><div class="bar-fill" style="width: ${prozent}%"></div></div></td>
@@ -192,7 +196,7 @@
             ausgabeDiv.innerHTML = html + "</table>";
         } else {
             empfBox.style.display = "none";
-            ausgabeDiv.innerHTML = "<div class='no-result'>Kein passender C2 gefunden.</div>";
+            ausgabeDiv.innerHTML = "<div class='no-result'>Kein passender C2 für diesen Spannungsbereich gefunden.</div>";
         }
     }
 </script>
