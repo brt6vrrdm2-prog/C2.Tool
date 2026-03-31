@@ -2,102 +2,113 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>TML Hybrid-Rechner | C1 vs C2 Logik</title>
+    <title>TML C2-Rechner | LE-Direkt-Logik</title>
     <style>
         :root { --tml-red: #e30613; --tml-blue: #003366; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f4f4; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { background: white; padding: 30px; max-width: 650px; width: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); border-top: 6px solid var(--tml-red); }
-        h2 { color: var(--tml-blue); text-align: center; margin-bottom: 20px; }
-        .info-box { background: #eef2f7; padding: 15px; border-left: 4px solid var(--tml-blue); margin-bottom: 20px; font-size: 0.85em; line-height: 1.5; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { background: white; padding: 30px; max-width: 600px; width: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-top: 6px solid var(--tml-red); }
+        h2 { color: var(--tml-blue); text-align: center; margin-bottom: 25px; }
         .input-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1em; }
-        button { width: 100%; padding: 15px; background: var(--tml-red); color: white; border: none; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 1.1em; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th { background: var(--tml-blue); color: white; padding: 12px; text-align: left; font-size: 0.8em; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 0.95em; }
-        .highlight { font-weight: bold; color: var(--tml-red); }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #333; font-size: 0.9em; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 15px; background: var(--tml-red); color: white; border: none; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px; transition: 0.2s; }
+        button:hover { background: #b3050f; }
+        .result-area { margin-top: 25px; display: none; }
+        .info-pill { background: #eef2f7; padding: 10px; border-radius: 4px; border-left: 4px solid var(--tml-blue); margin-bottom: 15px; font-size: 0.85em; line-height: 1.4; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: var(--tml-blue); color: white; padding: 10px; text-align: left; font-size: 0.75em; text-transform: uppercase; }
+        td { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.9em; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .ok { color: #28a745; font-weight: bold; }
+        .warn { color: #dc3545; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Hybrid-Analyse C1/C2</h2>
+    <h2>TML C2-Analyse (LE-Logik)</h2>
     
-    <div class="info-box">
-        <strong>Berechnungs-Modus:</strong><br>
-        • <strong>C1-Ermittlung:</strong> Berücksichtigt &radic;3 (Phasenspannung U/&radic;3).<br>
-        • <strong>C2-Prüfung:</strong> Ignoriert &radic;3 (Grenzwerte 10%/45% direkt auf U_n).<br>
-        • <strong>Last:</strong> Wega (300pF) + Kabel (100pF/m) + RM (2M&Omega;).
+    <div class="info-pill">
+        <strong>Berechnungsregel:</strong><br>
+        • C1-Bestimmung erfolgt über U/&radic;3 (Phasenspannung).<br>
+        • C2-Stromprüfung erfolgt direkt mit U_n (ohne &radic;3).
     </div>
 
     <div class="input-group">
-        <label>Nennspannung U_n (V):</label>
+        <label>Nennspannung (V) U_n:</label>
         <input type="number" id="un" value="20000">
     </div>
 
     <div class="input-group">
-        <label>Eingabetyp für Koppler:</label>
+        <label>Leitungslänge C2 (Meter):</label>
+        <input type="number" id="len" value="3">
+    </div>
+
+    <div class="input-group">
+        <label>Eingabetyp:</label>
         <select id="mode">
-            <option value="c1">Kapazität C1 (pF)</option>
-            <option value="isc">Kurzschlussstrom I_sc (&micro;A)</option>
+            <option value="isc">Kurzschlussstrom I_sc (µA)</option>
+            <option value="c1">Direkte Kapazität C1 (pF)</option>
         </select>
     </div>
 
     <div class="input-group">
-        <label>Wert (pF oder &micro;A):</label>
-        <input type="number" id="val" value="15">
+        <label>Wert (µA oder pF):</label>
+        <input type="number" id="val" value="40">
     </div>
 
-    <div class="input-group">
-        <label>Leitungslänge (m):</label>
-        <input type="number" id="len" value="3">
-    </div>
+    <button onclick="performCalculation()">Berechnung starten</button>
 
-    <button onclick="calculateHybrid()">Berechnung starten</button>
-
-    <div id="results" style="display:none; margin-top:25px;">
-        <div id="summary" class="info-box" style="background:#f9f9f9;"></div>
+    <div id="resArea" class="result-area">
+        <div id="c1_info" class="info-pill"></div>
         <div id="table_container"></div>
     </div>
 </div>
 
 <script>
-function calculateHybrid() {
+function performCalculation() {
     const Un = parseFloat(document.getElementById('un').value);
     const L = parseFloat(document.getElementById('len').value) || 0;
     const mode = document.getElementById('mode').value;
-    const inputVal = parseFloat(document.getElementById('val').value);
+    const val = parseFloat(document.getElementById('val').value);
     
-    const RM = 2000000;
-    const CL_Total = (300 + (L * 100)) * 1e-12; // Wega + Kabel
+    if (!Un || !val) return;
+
+    // Konstanten
+    const RM = 2e6;              // 2 MOhm Innenwiderstand
+    const CL = 300e-12;          // 300 pF Display
+    const C_line = L * 100e-12;  // 100 pF pro Meter Leitung
+    const f = 50;
     
-    // 1. C1 BERECHNUNG (mit Wurzel 3)
+    // Spannung für C1 (Physikalischer Koppler-Strom gegen Erde)
+    const Ule = Un / Math.sqrt(3);
+
+    // C1 Berechnung (basierend auf I_sc gegen Erde)
     let C1;
     if (mode === 'isc') {
-        // I_sc = (Un / sqrt(3)) * 2 * PI * f * C1
-        const U_Phasenspannung = Un / Math.sqrt(3);
-        C1 = (inputVal * 1e-6) / (U_Phasenspannung * 2 * Math.PI * 50);
+        C1 = (val * 1e-6) / (2 * Math.PI * f * Ule);
     } else {
-        C1 = inputVal * 1e-12;
+        C1 = val * 1e-12;
     }
 
-    // 2. C2 PRÜFUNG (ohne Wurzel 3 - Grenzwerte direkt auf Un bezogen)
-    const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
-    let found = [];
+    const E12_BASE = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
+    let validOptions = [];
 
-    for (let d = -11; d <= -7; d++) {
-        for (let base of E12) {
-            let C2 = base * Math.pow(10, d);
-            let k = C1 / (C1 + C2 + CL_Total);
+    // Durchsuche E12 Werte
+    for (let exp = -11; exp <= -7; exp++) {
+        for (let base of E12_BASE) {
+            let C2 = base * Math.pow(10, exp);
             
-            // Hier wird Wurzel 3 ignoriert (Direkt Un * Faktor)
-            let i_high = (0.45 * Un * k) / RM;
-            let i_low = (0.10 * Un * k) / RM;
+            // Teilerfaktor k
+            let k = C1 / (C1 + C2 + CL + C_line);
+            
+            // Ströme berechnen OHNE WURZEL 3 (Direkt mit Un laut Vorgabe)
+            let i_high = (0.45 * Un * k) / RM; 
+            let i_low  = (0.10 * Un * k) / RM;
 
-            if (i_high > 2.5e-6 && i_low <= 1.67e-6) {
-                found.push({
-                    c2Str: formatF(C2),
+            if (i_high > 2.5e-6 && i_low < 1.67e-6) {
+                validOptions.push({
+                    val: formatFarad(C2),
                     ih: (i_high * 1e6).toFixed(2),
                     il: (i_low * 1e6).toFixed(2)
                 });
@@ -105,23 +116,32 @@ function calculateHybrid() {
         }
     }
 
-    document.getElementById('results').style.display = 'block';
-    document.getElementById('summary').innerHTML = `
-        Ermitteltes C1: <strong>${(C1 * 1e12).toFixed(1)} pF</strong><br>
-        Gesamte Lastkapazität: <strong>${(CL_Total * 1e12).toFixed(0)} pF</strong>
+    document.getElementById('resArea').style.display = 'block';
+    document.getElementById('c1_info').innerHTML = `
+        Ermitteltes <b>C1: ${(C1 * 1e12).toFixed(1)} pF</b><br>
+        Zusatzlast (Wega + Kabel): <b>${((CL + C_line) * 1e12).toFixed(0)} pF</b>
     `;
 
-    let html = `<table><tr><th>C2 (E12)</th><th>I @45% Un (&gt;2.5&micro;A)</th><th>I @10% Un (&le;1.67&micro;A)</th></tr>`;
-    found.forEach(f => {
-        html += `<tr><td><strong>${f.c2Str}</strong></td><td>${f.ih} &micro;A</td><td>${f.il} &micro;A</td></tr>`;
-    });
-    document.getElementById('table_container').innerHTML = html + "</table>";
+    let html = `<table><tr><th>C2 (E12)</th><th>I @45% (>2.5µA)</th><th>I @10% (<1.67µA)</th></tr>`;
+    
+    if (validOptions.length > 0) {
+        validOptions.forEach(opt => {
+            html += `<tr>
+                <td><b>${opt.val}</b></td>
+                <td class="ok">${opt.ih} µA</td>
+                <td class="ok">${opt.il} µA</td>
+            </tr>`;
+        });
+        document.getElementById('table_container').innerHTML = html + "</table>";
+    } else {
+        document.getElementById('table_container').innerHTML = "<p class='warn'>Keine passenden E12-Werte gefunden!</p>";
+    }
 }
 
-function formatF(val) {
-    if (val >= 1e-6) return (val * 1e6).toFixed(1) + " &micro;F";
-    if (val >= 1e-9) return (val * 1e9).toFixed(1) + " nF";
-    return (val * 1e12).toFixed(0) + " pF";
+function formatFarad(f) {
+    if (f >= 1e-6) return (f * 1e6).toFixed(1) + " µF";
+    if (f >= 1e-9) return (f * 1e9).toFixed(1) + " nF";
+    return (f * 1e12).toFixed(0) + " pF";
 }
 </script>
 
