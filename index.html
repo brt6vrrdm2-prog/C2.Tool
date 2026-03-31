@@ -4,39 +4,30 @@
     <meta charset="UTF-8">
     <title>C2 Tool</title>
     <style>
-        :root { --tml-red: #e30613; --tml-blue: #003366; --bg: #f4f7f9; --gray: #6c757d; --blue-light: #e7f5ff; }
+        :root { --tml-red: #e30613; --tml-blue: #003366; --bg: #f4f7f9; --gray: #6c757d; }
         body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 40px 20px; color: #333; }
         .container { background: white; padding: 35px; max-width: 600px; width: 100%; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); border-top: 8px solid var(--tml-red); position: relative; }
-        
         h1 { color: var(--tml-blue); text-align: center; margin-top: 0; margin-bottom: 30px; font-size: 28px; letter-spacing: -0.5px; }
-        
         .input-row { display: flex; gap: 15px; margin-bottom: 20px; }
         .input-group { flex: 1; margin-bottom: 20px; }
-        
         label { display: block; font-weight: 600; margin-bottom: 8px; color: #555; font-size: 0.9em; }
         input, select { width: 100%; padding: 12px 15px; border: 1.5px solid #dee2e6; border-radius: 6px; box-sizing: border-box; font-size: 16px; transition: border-color 0.2s; }
         input:focus, select:focus { border-color: var(--tml-blue); outline: none; }
-        
         .button-group { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
         button { flex: 2; padding: 16px; background: var(--tml-red); color: white; border: none; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 17px; transition: 0.2s; }
         button.secondary { flex: 1; background: var(--gray); min-width: 120px; }
         button.copy-btn { flex: 1; background: var(--tml-blue); font-size: 14px; padding: 10px; }
         button:hover { opacity: 0.9; }
         button:active { transform: scale(0.98); }
-
         .result-area { margin-top: 30px; border-top: 2px solid #f0f0f0; padding-top: 25px; display: none; }
-        
         .recommendation-box { background: #fff9db; border: 1px solid #ffec99; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
         .rec-label { font-size: 0.85em; text-transform: uppercase; letter-spacing: 1px; color: #856404; font-weight: bold; }
         .rec-value { color: var(--tml-red); font-size: 32px; font-weight: 800; display: block; margin: 5px 0; }
-        
         .info-pill { background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid var(--tml-blue); margin-bottom: 20px; font-size: 0.9em; line-height: 1.6; }
-        
         table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
         th { background: #f1f3f5; color: var(--tml-blue); padding: 12px 10px; text-align: left; font-size: 0.75em; text-transform: uppercase; border-bottom: 2px solid #dee2e6; }
         td { padding: 12px 10px; border-bottom: 1px solid #eee; font-size: 0.9em; }
         .ok { color: #2b8a3e; font-weight: bold; }
-
         .copy-toast { position: fixed; bottom: 20px; background: #333; color: white; padding: 10px 20px; border-radius: 20px; font-size: 14px; display: none; z-index: 100; }
     </style>
 </head>
@@ -108,10 +99,11 @@
 <div id="toast" class="copy-toast">In Zwischenablage kopiert!</div>
 
 <script>
-let lastResults = []; // Speicher für Kopierfunktion
+let lastResults = [];
+let currentMode = 'neu';
 
 function clearAllFields() {
-    const mode = document.getElementById('projectMode').value;
+    currentMode = document.getElementById('projectMode').value;
     const inputs = document.querySelectorAll('input[type="number"]');
     inputs.forEach(input => {
         if(input.id === 'len') input.value = 0;
@@ -119,13 +111,13 @@ function clearAllFields() {
     });
     document.getElementById('resArea').style.display = 'none';
     
-    document.getElementById('c1-group').style.display = (mode === 'neu') ? 'block' : 'none';
-    document.getElementById('isc-group').style.display = (mode === 'retrofit' || mode === 'magnet') ? 'block' : 'none';
-    document.getElementById('magnet-group').style.display = (mode === 'magnet') ? 'block' : 'none';
+    document.getElementById('c1-group').style.display = (currentMode === 'neu') ? 'block' : 'none';
+    document.getElementById('isc-group').style.display = (currentMode === 'retrofit' || currentMode === 'magnet') ? 'block' : 'none';
+    document.getElementById('magnet-group').style.display = (currentMode === 'magnet') ? 'block' : 'none';
 }
 
 function copyInputs() {
-    const mode = document.getElementById('projectMode').options[document.getElementById('projectMode').selectedIndex].text;
+    const modeText = document.getElementById('projectMode').options[document.getElementById('projectMode').selectedIndex].text;
     const unMin = document.getElementById('un_min').value || '0';
     const unMax = document.getElementById('un_max').value || '0';
     const c1 = document.getElementById('c1_val').value || '-';
@@ -133,13 +125,11 @@ function copyInputs() {
     const ihr = document.getElementById('ihr_val').value || '-';
     const len = document.getElementById('len').value || '0';
 
-    let text = `C2 TOOL - EINGABEDATEN\n`;
-    text += `------------------------\n`;
-    text += `Modus: ${mode}\n`;
-    text += `Spannung: ${unMin}V - ${unMax}V\n`;
-    if(c1 !== '-') text += `C1 Kapazität: ${c1} pF\n`;
-    if(ik !== '-') text += `Kurzschlussstrom Ik: ${ik} µA\n`;
-    if(ihr !== '-') text += `Messwert I_HR: ${ihr} µA\n`;
+    let text = `C2 TOOL - EINGABEDATEN\n------------------------\n`;
+    text += `Modus: ${modeText}\nSpannung: ${unMin}V - ${unMax}V\n`;
+    if(currentMode === 'neu') text += `C1 Kapazität: ${c1} pF\n`;
+    if(currentMode === 'retrofit' || currentMode === 'magnet') text += `Kurzschlussstrom Ik: ${ik} µA\n`;
+    if(currentMode === 'magnet') text += `Messwert I_HR: ${ihr} µA\n`;
     text += `Leitungslänge: ${len} m\n`;
 
     navigator.clipboard.writeText(text);
@@ -151,14 +141,13 @@ function copyResults() {
     const recLabel = document.querySelector('.rec-label').innerText;
     const recVal = document.querySelector('.rec-value').innerText;
     
-    let text = `C2 TOOL - ERGEBNISSE\n`;
-    text += `------------------------\n`;
-    text += `${summary}\n\n`;
-    text += `${recLabel}: ${recVal}\n\n`;
-    text += `TABELLE (C2 Soll | Zusatz | I@45% | I@10%)\n`;
+    let text = `C2 TOOL - ERGEBNISSE\n------------------------\n${summary}\n\n${recLabel}: ${recVal}\n\n`;
+    text += currentMode === 'magnet' ? `TABELLE (C2 Soll | Zusatz | I@45% | I@10%)\n` : `TABELLE (C2 Soll | I@45% | I@10%)\n`;
     
     lastResults.forEach(r => {
-        text += `${format(r.total)} | ${format(r.add)} | ${r.iMin.toFixed(2)}µA | ${r.iMax.toFixed(2)}µA\n`;
+        text += currentMode === 'magnet' 
+            ? `${format(r.total)} | ${format(r.add)} | ${r.iMin.toFixed(2)}µA | ${r.iMax.toFixed(2)}µA\n`
+            : `${format(r.total)} | ${r.iMin.toFixed(2)}µA | ${r.iMax.toFixed(2)}µA\n`;
     });
 
     navigator.clipboard.writeText(text);
@@ -175,7 +164,6 @@ function calculate() {
     let UnMin = parseFloat(document.getElementById('un_min').value) || 0;
     let UnMax = parseFloat(document.getElementById('un_max').value) || 0;
     const L = parseFloat(document.getElementById('len').value) || 0;
-    const mode = document.getElementById('projectMode').value;
     const omega = 2 * Math.PI * 50;
     const RM_WEGA = 2e6;  
     const RM_ORION = 36e6; 
@@ -187,19 +175,18 @@ function calculate() {
     if (UnMax === 0) UnMax = UnMin;
 
     let C1, C2_HR = 0;
-    if (mode === 'neu') {
+    if (currentMode === 'neu') {
         C1 = parseFloat(document.getElementById('c1_val').value) * 1e-12;
     } else {
         const Ik = parseFloat(document.getElementById('isc_val').value) * 1e-6;
         if (!Ik) { alert("I_k fehlt."); return; }
         C1 = Ik / (omega * (UnMin / Math.sqrt(3)));
-        if (mode === 'magnet') {
+        if (currentMode === 'magnet') {
             const Ihr = parseFloat(document.getElementById('ihr_val').value) * 1e-6;
             if (!Ihr) { alert("I_HR fehlt."); return; }
             const Uhr_calc = Ihr * RM_ORION;
             const Ic2 = Math.sqrt(Math.max(0, Math.pow(Ik, 2) - Math.pow(Ihr, 2)));
             C2_HR = Ic2 / (omega * Uhr_calc);
-            window.lastUhr = Uhr_calc;
         }
     }
     if (!C1) return;
@@ -225,15 +212,20 @@ function calculate() {
     document.getElementById('resArea').style.display = 'block';
     
     let recHTML = `<span class="rec-label">Empfohlener C2 Wert</span><span class="rec-value">${format(recommended.total)}</span>`;
-    if (mode === 'magnet') recHTML += `<small>Zusatz-Kondensator: <b>${format(recommended.add)}</b></small>`;
+    if (currentMode === 'magnet') recHTML += `<small>Zusatz-Kondensator: <b>${format(recommended.add)}</b></small>`;
     document.getElementById('recommendation').innerHTML = recHTML;
 
     document.getElementById('summary').innerHTML = `Ermitteltes C1: <b>${(C1*1e12).toFixed(1)} pF</b> | Bereich: <b>${UnMin}V - ${UnMax}V</b>`;
     
-    let html = `<table><tr><th>C2 Soll</th><th>Zusatz</th><th>I@45%</th><th>I@10%</th></tr>`;
+    let html = `<table><tr><th>C2 Soll</th>`;
+    if (currentMode === 'magnet') html += `<th>Zusatz</th>`;
+    html += `<th>I@45%</th><th>I@10%</th></tr>`;
+    
     lastResults.forEach(r => {
         let isRec = (r.total === recommended.total) ? 'style="background:#fff9db"' : '';
-        html += `<tr ${isRec}><td>${format(r.total)}</td><td>${format(r.add)}</td><td class="ok">${r.iMin.toFixed(2)}µA</td><td>${r.iMax.toFixed(2)}µA</td></tr>`;
+        html += `<tr ${isRec}><td>${format(r.total)}</td>`;
+        if (currentMode === 'magnet') html += `<td>${format(r.add)}</td>`;
+        html += `<td class="ok">${r.iMin.toFixed(2)}µA</td><td>${r.iMax.toFixed(2)}µA</td></tr>`;
     });
     document.getElementById('table_container').innerHTML = html + "</table>";
 }
