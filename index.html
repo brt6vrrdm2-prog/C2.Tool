@@ -2,113 +2,122 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>TML Projekt-Auslegung | LRM vs HR Edition</title>
+    <title>TML Projekt-Auslegung | Flex-Spannung</title>
     <style>
         :root { --tml-red: #e30613; --tml-blue: #003366; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
         .container { background: white; padding: 30px; max-width: 650px; width: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-top: 6px solid var(--tml-red); }
         h2 { color: var(--tml-blue); text-align: center; margin-bottom: 25px; }
-        .input-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; color: #333; font-size: 0.9em; }
+        .input-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .input-group { flex: 1; margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: #333; font-size: 0.85em; }
         input, select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
         button { width: 100%; padding: 15px; background: var(--tml-red); color: white; border: none; font-weight: bold; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 10px; transition: 0.2s; }
         button:hover { background: #b3050f; }
         .result-area { margin-top: 25px; display: none; }
         .info-pill { background: #eef2f7; padding: 12px; border-radius: 4px; border-left: 4px solid var(--tml-blue); margin-bottom: 15px; font-size: 0.85em; line-height: 1.4; }
+        .recommendation-box { background: #fff3cd; border: 2px solid #ffeeba; padding: 15px; border-radius: 4px; margin-bottom: 20px; text-align: center; }
+        .rec-value { color: var(--tml-red); font-size: 1.4em; font-weight: bold; display: block; margin-top: 5px; }
         .highlight { color: var(--tml-red); font-weight: bold; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { background: var(--tml-blue); color: white; padding: 10px; text-align: left; font-size: 0.75em; text-transform: uppercase; }
-        td { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.9em; }
+        th { background: var(--tml-blue); color: white; padding: 8px; text-align: left; font-size: 0.7em; text-transform: uppercase; }
+        td { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.85em; }
         tr:nth-child(even) { background-color: #f9f9f9; }
         .ok { color: #28a745; font-weight: bold; }
     </style>
 </head>
-<body>
+<body onload="clearAllFields()">
 
 <div class="container">
     <h2>TML Projekt-Auslegung</h2>
     
     <div class="input-group">
         <label>Projekt-Typ wählen:</label>
-        <select id="projectMode" onchange="resetAndToggleUI()">
-            <option value="neu">1. Berechnung Neuanlage (C1 bekannt)</option>
-            <option value="retrofit">2. Retrofit Einbau (I_k bekannt)</option>
-            <option value="magnet">3. Retrofit Magnetgehäuse (HR -> LRM)</option>
+        <select id="projectMode" onchange="clearAllFields()">
+            <option value="neu">1. Neuanlage (C1 bekannt)</option>
+            <option value="retrofit">2. Retrofit (I_k bekannt)</option>
+            <option value="magnet">3. Retrofit Magnetgehäuse (HR Orion -> LRM)</option>
         </select>
     </div>
 
     <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
 
     <div id="input-fields">
-        <div class="input-group">
-            <label>Nennspannung U_n (V):</label>
-            <input type="number" id="un" value="20000">
+        <div class="input-row">
+            <div class="input-group">
+                <label>U_n Min (V):</label>
+                <input type="number" id="un_min" placeholder="Optional">
+            </div>
+            <div class="input-group">
+                <label>U_n Max (V):</label>
+                <input type="number" id="un_max" placeholder="Optional">
+            </div>
         </div>
 
         <div id="c1-group" class="input-group">
             <label>Konkrete C1 Kapazität (pF):</label>
-            <input type="number" id="c1_val" value="27">
+            <input type="number" id="c1_val">
         </div>
 
         <div id="isc-group" class="input-group" style="display:none;">
             <label>Kurzschlussstrom I_k (&micro;A):</label>
-            <input type="number" id="isc_val" value="98.7">
+            <input type="number" id="isc_val">
         </div>
 
         <div id="magnet-group" style="display:none;">
             <div class="input-group">
                 <label>Messwert I_HR mit Orion (36M&Omega;) (&micro;A):</label>
-                <input type="number" id="ihr_val" value="6.98">
-            </div>
-            <div class="input-group">
-                <label>Spannung an HR-Schnittstelle U_HR (V):</label>
-                <input type="number" id="uhr_val" value="251.28">
+                <input type="number" id="ihr_val">
             </div>
         </div>
 
         <div class="input-group">
             <label>Leitungslänge zum Wega (Meter):</label>
-            <input type="number" id="len" value="3">
+            <input type="number" id="len" value="0">
         </div>
 
         <button onclick="calculate()">Berechnung starten</button>
     </div>
 
     <div id="resArea" class="result-area">
+        <div id="recommendation" class="recommendation-box"></div>
         <div id="summary" class="info-pill"></div>
         <div id="table_container"></div>
     </div>
 </div>
 
 <script>
-function resetAndToggleUI() {
+function clearAllFields() {
     const mode = document.getElementById('projectMode').value;
+    const inputs = document.querySelectorAll('input[type="number"]');
+    inputs.forEach(input => {
+        if(input.id === 'len') input.value = 0;
+        else input.value = '';
+    });
     document.getElementById('resArea').style.display = 'none';
     
-    // Default-Werte setzen
-    document.getElementById('un').value = "20000";
-    document.getElementById('c1_val').value = "27";
-    document.getElementById('isc_val').value = "98.7";
-    document.getElementById('ihr_val').value = "6.98";
-    document.getElementById('uhr_val').value = "251.28";
-    document.getElementById('len').value = "3";
-
     document.getElementById('c1-group').style.display = (mode === 'neu') ? 'block' : 'none';
     document.getElementById('isc-group').style.display = (mode === 'retrofit' || mode === 'magnet') ? 'block' : 'none';
     document.getElementById('magnet-group').style.display = (mode === 'magnet') ? 'block' : 'none';
 }
 
 function calculate() {
-    const Un = parseFloat(document.getElementById('un').value);
+    let UnMin = parseFloat(document.getElementById('un_min').value) || 0;
+    let UnMax = parseFloat(document.getElementById('un_max').value) || 0;
     const L = parseFloat(document.getElementById('len').value) || 0;
     const mode = document.getElementById('projectMode').value;
-    const f = 50;
-    const omega = 2 * Math.PI * f;
+    const omega = 2 * Math.PI * 50;
     
-    const RM_WEGA = 2e6;  // LRM Standard für Wega-Prüfung
-    const CL = 300e-12;   // Wega Eigenlast
-    const C_line = L * 100e-12; // Kabelkapazität
-    const Ule = Un / Math.sqrt(3);
+    const RM_WEGA = 2e6;  
+    const RM_ORION = 36e6; 
+    const CL = 300e-12;   
+    const C_line = L * 100e-12; 
+
+    if (UnMin === 0 && UnMax === 0) { alert("Bitte mindestens einen Spannungswert eingeben."); return; }
+    
+    // Falls nur einer eingegeben wurde, setzen wir beide für die Berechnung gleich
+    if (UnMin === 0) UnMin = UnMax;
+    if (UnMax === 0) UnMax = UnMin;
 
     let C1, C2_HR = 0;
 
@@ -116,71 +125,74 @@ function calculate() {
         C1 = parseFloat(document.getElementById('c1_val').value) * 1e-12;
     } else {
         const Ik = parseFloat(document.getElementById('isc_val').value) * 1e-6;
-        C1 = Ik / (omega * Ule);
+        if (!Ik) { alert("Bitte Kurzschlussstrom eingeben."); return; }
+        // C1-Bezug auf die kleinere Spannung für konservative Berechnung
+        C1 = Ik / (omega * (UnMin / Math.sqrt(3)));
 
         if (mode === 'magnet') {
             const Ihr = parseFloat(document.getElementById('ihr_val').value) * 1e-6;
-            const Uhr = parseFloat(document.getElementById('uhr_val').value);
-            // Ic2 kapazitiv berechnen (berücksichtigt indirekt die 36M Ohm des Orion)
+            if (!Ihr) { alert("Bitte I_HR eingeben."); return; }
+            const Uhr_calc = Ihr * RM_ORION;
             const Ic2 = Math.sqrt(Math.max(0, Math.pow(Ik, 2) - Math.pow(Ihr, 2)));
-            C2_HR = Ic2 / (omega * Uhr);
+            C2_HR = Ic2 / (omega * Uhr_calc);
+            window.lastUhr = Uhr_calc;
         }
     }
+
+    if (!C1) { alert("Ungültige Eingaben für C1-Ermittlung."); return; }
 
     const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
     let results = [];
 
-    // Suche passende C2-Kombinationen (E12-Reihe)
     for (let exp = -11; exp <= -7; exp++) {
         for (let base of E12) {
-            let C2_total_req = base * Math.pow(10, exp);
-            // k-Faktor für das Wega-System
-            let k = C1 / (C1 + C2_total_req + CL + C_line);
+            let C2_total = base * Math.pow(10, exp);
+            let k = C1 / (C1 + C2_total + CL + C_line);
             
-            // Prüfung der Wega-Schwellen gegen 2 MegaOhm
-            let i45 = (0.45 * Un * k) / RM_WEGA;
-            let i10 = (0.10 * Un * k) / RM_WEGA;
+            let i45_min = (0.45 * UnMin * k) / RM_WEGA;
+            let i10_max = (0.10 * UnMax * k) / RM_WEGA;
 
-            if (i45 > 2.5e-6 && i10 < 1.67e-6) {
-                // Differenz zur Bestands-Kapazität (HR) berechnen
-                let C2_add = C2_total_req - C2_HR; 
+            // Logik: Muss bei Min leuchten (>2.5) UND bei Max aus sein (<1.67)
+            if (i45_min > 2.5e-6 && i10_max < 1.67e-6) {
                 results.push({
-                    total: format(C2_total_req),
-                    add: format(C2_add),
-                    ih: (i45 * 1e6).toFixed(2),
-                    il: (i10 * 1e6).toFixed(2)
+                    total: C2_total,
+                    add: C2_total - C2_HR,
+                    iMin: i45_min * 1e6,
+                    iMax: i10_max * 1e6
                 });
             }
         }
     }
 
+    if (results.length === 0) {
+        alert("Keine passende Kapazität für diese Spannung(en) gefunden.");
+        return;
+    }
+
+    let recommended = results.reduce((prev, curr) => Math.abs(curr.iMin - 4.0) < Math.abs(prev.iMin - 4.0) ? curr : prev);
+
     document.getElementById('resArea').style.display = 'block';
-    let summaryHTML = `<strong>Berechnungs-Zusammenfassung:</strong><br>
-                       C1 (Koppler): <b>${(C1*1e12).toFixed(2)} pF</b><br>`;
+    document.getElementById('recommendation').innerHTML = `
+        <strong>EMPFEHLUNG:</strong><br>
+        Ziel-Kapazität C2: <span class="rec-value">${format(recommended.total)}</span>
+        ${mode === 'magnet' ? `<small>Zusatz-Kondensator: <b>${format(recommended.add)}</b></small>` : ''}
+    `;
+
+    document.getElementById('summary').innerHTML = `
+        Ermitteltes C1: <b>${(C1*1e12).toFixed(1)} pF</b> | 
+        ${UnMin === UnMax ? `Spannung: <b>${UnMin}V</b>` : `Bereich: <b>${UnMin}V - ${UnMax}V</b>`}
+    `;
     
-    if (mode === 'magnet') {
-        summaryHTML += `Bestand C2 (HR-Magnet): <b>${(C2_HR*1e12).toFixed(2)} pF</b><br>
-                        <small>Info: HR-Werte basieren auf 36M&Omega; Messung.</small><br>`;
-    }
-    
-    summaryHTML += `Feste Last (Wega + Kabel): <b>${((CL+C_line)*1e12).toFixed(0)} pF</b><br>
-                    <small>Info: Wega-Prüfung erfolgt gegen <b>2M&Omega;</b>.</small>`;
-    
-    document.getElementById('summary').innerHTML = summaryHTML;
-    
-    let html = `<table><tr><th>C2 gesamt (Wega)</th><th>Zusatz-Kondensator</th><th>I @45% Un (LRM)</th></tr>`;
-    if (results.length > 0) {
-        results.forEach(r => {
-            html += `<tr><td>${r.total}</td><td class="highlight">${r.add}</td><td class="ok">${r.ih} &micro;A</td></tr>`;
-        });
-        document.getElementById('table_container').innerHTML = html + "</table>";
-    } else {
-        document.getElementById('table_container').innerHTML = "<p style='color:red; text-align:center;'>Keine E12-Werte erfüllen die LRM-Bedingungen.</p>";
-    }
+    let html = `<table><tr><th>C2 Soll</th><th>Zusatz</th><th>I@45% (${UnMin}V)</th><th>I@10% (${UnMax}V)</th></tr>`;
+    results.forEach(r => {
+        let isRec = (r.total === recommended.total) ? 'style="background:#fff3cd"' : '';
+        html += `<tr ${isRec}><td>${format(r.total)}</td><td>${format(r.add)}</td><td class="ok">${r.iMin.toFixed(2)}&micro;A</td><td>${r.iMax.toFixed(2)}&micro;A</td></tr>`;
+    });
+    document.getElementById('table_container').innerHTML = html + "</table>";
 }
 
 function format(v) {
-    if (v <= 0) return "0 pF";
+    if (v <= 1e-13) return "0 pF";
     if (v >= 1e-6) return (v*1e6).toFixed(1) + " &micro;F";
     if (v >= 1e-9) return (v*1e9).toFixed(1) + " nF";
     return (v*1e12).toFixed(0) + " pF";
