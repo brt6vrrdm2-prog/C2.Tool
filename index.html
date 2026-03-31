@@ -2,11 +2,11 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>TML C2-Rechner | Projekt-Modi</title>
+    <title>TML Projekt-Auslegung | LRM vs HR Edition</title>
     <style>
         :root { --tml-red: #e30613; --tml-blue: #003366; }
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .container { background: white; padding: 30px; max-width: 600px; width: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-top: 6px solid var(--tml-red); }
+        .container { background: white; padding: 30px; max-width: 650px; width: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border-top: 6px solid var(--tml-red); }
         h2 { color: var(--tml-blue); text-align: center; margin-bottom: 25px; }
         .input-group { margin-bottom: 15px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; color: #333; font-size: 0.9em; }
@@ -15,12 +15,12 @@
         button:hover { background: #b3050f; }
         .result-area { margin-top: 25px; display: none; }
         .info-pill { background: #eef2f7; padding: 12px; border-radius: 4px; border-left: 4px solid var(--tml-blue); margin-bottom: 15px; font-size: 0.85em; line-height: 1.4; }
+        .highlight { color: var(--tml-red); font-weight: bold; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { background: var(--tml-blue); color: white; padding: 10px; text-align: left; font-size: 0.75em; text-transform: uppercase; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.9em; }
         tr:nth-child(even) { background-color: #f9f9f9; }
         .ok { color: #28a745; font-weight: bold; }
-        .placeholder { color: #666; font-style: italic; text-align: center; padding: 20px; }
     </style>
 </head>
 <body>
@@ -29,45 +29,49 @@
     <h2>TML Projekt-Auslegung</h2>
     
     <div class="input-group">
-        <label>Projekt-Typ:</label>
-        <select id="projectMode" onchange="updateUI()">
-            <option value="neu">1. Berechnung Neuanlage</option>
-            <option value="retrofit">2. Retrofit Einbau</option>
-            <option value="magnet">3. Retrofit Magnetgehäuse</option>
+        <label>Projekt-Typ wählen:</label>
+        <select id="projectMode" onchange="resetAndToggleUI()">
+            <option value="neu">1. Berechnung Neuanlage (C1 bekannt)</option>
+            <option value="retrofit">2. Retrofit Einbau (I_k bekannt)</option>
+            <option value="magnet">3. Retrofit Magnetgehäuse (HR -> LRM)</option>
         </select>
     </div>
 
     <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
 
-    <div id="calculatorfields">
+    <div id="input-fields">
         <div class="input-group">
             <label>Nennspannung U_n (V):</label>
             <input type="number" id="un" value="20000">
         </div>
 
-        <!-- Feld für Punkt 1: Neuanlage (C1 Kapazität) -->
         <div id="c1-group" class="input-group">
             <label>Konkrete C1 Kapazität (pF):</label>
             <input type="number" id="c1_val" value="27">
         </div>
 
-        <!-- Feld für Punkt 2: Retrofit (Kurzschlussstrom) -->
         <div id="isc-group" class="input-group" style="display:none;">
-            <label>Kurzschlussstrom I_sc (&micro;A):</label>
-            <input type="number" id="isc_val" value="40">
+            <label>Kurzschlussstrom I_k (&micro;A):</label>
+            <input type="number" id="isc_val" value="98.7">
+        </div>
+
+        <div id="magnet-group" style="display:none;">
+            <div class="input-group">
+                <label>Messwert I_HR mit Orion (36M&Omega;) (&micro;A):</label>
+                <input type="number" id="ihr_val" value="6.98">
+            </div>
+            <div class="input-group">
+                <label>Spannung an HR-Schnittstelle U_HR (V):</label>
+                <input type="number" id="uhr_val" value="251.28">
+            </div>
         </div>
 
         <div class="input-group">
-            <label>Leitungslänge C2 (Meter):</label>
+            <label>Leitungslänge zum Wega (Meter):</label>
             <input type="number" id="len" value="3">
         </div>
 
         <button onclick="calculate()">Berechnung starten</button>
-    </div>
-
-    <!-- Platzhalter für Punkt 3 -->
-    <div id="magnet-placeholder" style="display:none;" class="placeholder">
-        Die Berechnungen für das Magnetgehäuse werden zu einem späteren Zeitpunkt hinzugefügt.
     </div>
 
     <div id="resArea" class="result-area">
@@ -77,67 +81,72 @@
 </div>
 
 <script>
-function updateUI() {
+function resetAndToggleUI() {
     const mode = document.getElementById('projectMode').value;
-    const calcFields = document.getElementById('calculatorfields');
-    const c1Group = document.getElementById('c1-group');
-    const iscGroup = document.getElementById('isc-group');
-    const magnetPlaceholder = document.getElementById('magnet-placeholder');
-    const resArea = document.getElementById('resArea');
+    document.getElementById('resArea').style.display = 'none';
+    
+    // Default-Werte setzen
+    document.getElementById('un').value = "20000";
+    document.getElementById('c1_val').value = "27";
+    document.getElementById('isc_val').value = "98.7";
+    document.getElementById('ihr_val').value = "6.98";
+    document.getElementById('uhr_val').value = "251.28";
+    document.getElementById('len').value = "3";
 
-    // Reset Results
-    resArea.style.display = 'none';
-
-    if (mode === 'magnet') {
-        calcFields.style.display = 'none';
-        magnetPlaceholder.style.display = 'block';
-    } else {
-        calcFields.style.display = 'block';
-        magnetPlaceholder.style.display = 'none';
-        
-        if (mode === 'neu') {
-            c1Group.style.display = 'block';
-            iscGroup.style.display = 'none';
-        } else {
-            c1Group.style.display = 'none';
-            iscGroup.style.display = 'block';
-        }
-    }
+    document.getElementById('c1-group').style.display = (mode === 'neu') ? 'block' : 'none';
+    document.getElementById('isc-group').style.display = (mode === 'retrofit' || mode === 'magnet') ? 'block' : 'none';
+    document.getElementById('magnet-group').style.display = (mode === 'magnet') ? 'block' : 'none';
 }
 
 function calculate() {
     const Un = parseFloat(document.getElementById('un').value);
     const L = parseFloat(document.getElementById('len').value) || 0;
     const mode = document.getElementById('projectMode').value;
+    const f = 50;
+    const omega = 2 * Math.PI * f;
     
-    const RM = 2e6; 
-    const CL = 300e-12; // Wega Display
-    const C_line = L * 100e-12; // Kabel
+    const RM_WEGA = 2e6;  // LRM Standard für Wega-Prüfung
+    const CL = 300e-12;   // Wega Eigenlast
+    const C_line = L * 100e-12; // Kabelkapazität
     const Ule = Un / Math.sqrt(3);
 
-    let C1;
+    let C1, C2_HR = 0;
+
     if (mode === 'neu') {
         C1 = parseFloat(document.getElementById('c1_val').value) * 1e-12;
-    } else if (mode === 'retrofit') {
-        let isc = parseFloat(document.getElementById('isc_val').value) * 1e-6;
-        C1 = isc / (2 * Math.PI * 50 * Ule);
+    } else {
+        const Ik = parseFloat(document.getElementById('isc_val').value) * 1e-6;
+        C1 = Ik / (omega * Ule);
+
+        if (mode === 'magnet') {
+            const Ihr = parseFloat(document.getElementById('ihr_val').value) * 1e-6;
+            const Uhr = parseFloat(document.getElementById('uhr_val').value);
+            // Ic2 kapazitiv berechnen (berücksichtigt indirekt die 36M Ohm des Orion)
+            const Ic2 = Math.sqrt(Math.max(0, Math.pow(Ik, 2) - Math.pow(Ihr, 2)));
+            C2_HR = Ic2 / (omega * Uhr);
+        }
     }
 
     const E12 = [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2];
     let results = [];
 
+    // Suche passende C2-Kombinationen (E12-Reihe)
     for (let exp = -11; exp <= -7; exp++) {
         for (let base of E12) {
-            let C2 = base * Math.pow(10, exp);
-            let k = C1 / (C1 + C2 + CL + C_line);
+            let C2_total_req = base * Math.pow(10, exp);
+            // k-Faktor für das Wega-System
+            let k = C1 / (C1 + C2_total_req + CL + C_line);
             
-            // C2-Prüfung OHNE Wurzel 3 (direkt auf Un)
-            let i45 = (0.45 * Un * k) / RM;
-            let i10 = (0.10 * Un * k) / RM;
+            // Prüfung der Wega-Schwellen gegen 2 MegaOhm
+            let i45 = (0.45 * Un * k) / RM_WEGA;
+            let i10 = (0.10 * Un * k) / RM_WEGA;
 
             if (i45 > 2.5e-6 && i10 < 1.67e-6) {
+                // Differenz zur Bestands-Kapazität (HR) berechnen
+                let C2_add = C2_total_req - C2_HR; 
                 results.push({
-                    c2: format(C2),
+                    total: format(C2_total_req),
+                    add: format(C2_add),
                     ih: (i45 * 1e6).toFixed(2),
                     il: (i10 * 1e6).toFixed(2)
                 });
@@ -146,24 +155,32 @@ function calculate() {
     }
 
     document.getElementById('resArea').style.display = 'block';
-    document.getElementById('summary').innerHTML = `
-        <strong>Ergebnis:</strong><br>
-        Ermitteltes C1: <b>${(C1*1e12).toFixed(1)} pF</b><br>
-        Lastkapazität (Display + Kabel): <b>${((CL+C_line)*1e12).toFixed(0)} pF</b>
-    `;
+    let summaryHTML = `<strong>Berechnungs-Zusammenfassung:</strong><br>
+                       C1 (Koppler): <b>${(C1*1e12).toFixed(2)} pF</b><br>`;
     
-    let html = `<table><tr><th>C2 (E12)</th><th>I @45% Un (&gt;2.5&micro;A)</th><th>I @10% Un (&lt;1.67&micro;A)</th></tr>`;
+    if (mode === 'magnet') {
+        summaryHTML += `Bestand C2 (HR-Magnet): <b>${(C2_HR*1e12).toFixed(2)} pF</b><br>
+                        <small>Info: HR-Werte basieren auf 36M&Omega; Messung.</small><br>`;
+    }
+    
+    summaryHTML += `Feste Last (Wega + Kabel): <b>${((CL+C_line)*1e12).toFixed(0)} pF</b><br>
+                    <small>Info: Wega-Prüfung erfolgt gegen <b>2M&Omega;</b>.</small>`;
+    
+    document.getElementById('summary').innerHTML = summaryHTML;
+    
+    let html = `<table><tr><th>C2 gesamt (Wega)</th><th>Zusatz-Kondensator</th><th>I @45% Un (LRM)</th></tr>`;
     if (results.length > 0) {
         results.forEach(r => {
-            html += `<tr><td><b>${r.c2}</b></td><td class="ok">${r.ih} &micro;A</td><td class="ok">${r.il} &micro;A</td></tr>`;
+            html += `<tr><td>${r.total}</td><td class="highlight">${r.add}</td><td class="ok">${r.ih} &micro;A</td></tr>`;
         });
+        document.getElementById('table_container').innerHTML = html + "</table>";
     } else {
-        html += `<tr><td colspan="3" style="text-align:center; color:red;">Keine passenden Werte gefunden.</td></tr>`;
+        document.getElementById('table_container').innerHTML = "<p style='color:red; text-align:center;'>Keine E12-Werte erfüllen die LRM-Bedingungen.</p>";
     }
-    document.getElementById('table_container').innerHTML = html + "</table>";
 }
 
 function format(v) {
+    if (v <= 0) return "0 pF";
     if (v >= 1e-6) return (v*1e6).toFixed(1) + " &micro;F";
     if (v >= 1e-9) return (v*1e9).toFixed(1) + " nF";
     return (v*1e12).toFixed(0) + " pF";
